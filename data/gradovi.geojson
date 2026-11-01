@@ -1,0 +1,9 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    { "type": "Feature", "properties": { "name": "Zagreb" }, "geometry": { "type": "Point", "coordinates": [15.9819, 45.8150] } },
+    { "type": "Feature", "properties": { "name": "Split" }, "geometry": { "type": "Point", "coordinates": [16.4402, 43.5081] } },
+    { "type": "Feature", "properties": { "name": "Rijeka" }, "geometry": { "type": "Point", "coordinates": [14.4422, 45.3271] } },
+    { "type": "Feature", "properties": { "name": "Osijek" }, "geometry": { "type": "Point", "coordinates": [18.6955, 45.5550] } }
+  ]
+}
