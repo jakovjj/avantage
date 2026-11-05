@@ -1,4 +1,4 @@
-import { MapLibreMap, Popup, setWorkerUrl } from 'maplibre-gl';
+import { MapLibreMap, NavigationControl, Popup, ScaleControl, setWorkerUrl } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { propsTable } from './utils.js';
@@ -17,12 +17,14 @@ const overlayFeature = (map, point) =>
 	map.queryRenderedFeatures(point).find((f) => map.getSource(f.source)?.type === 'geojson');
 
 /** Resolves with a map of Croatia once its style has loaded. */
-export function createMap(container) {
+export function createMap (container) {
 	const map = new MapLibreMap({
 		container,
 		style: 'https://tiles.openfreemap.org/styles/positron',
 		bounds: [[13.2, 42.2], [19.7, 46.7]]
 	});
+	map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+	map.addControl(new ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 	map.on('click', (e) => {
 		const f = overlayFeature(map, e.point);
 		if (f) new Popup({ maxWidth: '360px' }).setLngLat(e.lngLat).setHTML(propsTable(f.properties)).addTo(map);
@@ -32,14 +34,14 @@ export function createMap(container) {
 }
 
 /** Current view as [w, s, e, n], grown by `scale` around its centre. */
-export function viewBbox(map, scale = 1) {
+export function viewBbox (map, scale = 1) {
 	const [[w, s], [e, n]] = map.getBounds().toArray();
 	const dx = ((e - w) * (scale - 1)) / 2, dy = ((n - s) * (scale - 1)) / 2;
 	return [w - dx, s - dy, e + dx, n + dy];
 }
 
 /** Adds a raster or GeoJSON source; `paint` overrides the GeoJSON styles per kind (fill / line / circle). */
-export function addOverlay(map, id, source, paint = {}) {
+export function addOverlay (map, id, source, paint = {}) {
 	map.addSource(id, source);
 	if (source.type === 'raster') return map.addLayer({ id, type: 'raster', source: id });
 	const color = COLORS[colorIndex++ % COLORS.length];
@@ -53,7 +55,7 @@ export function addOverlay(map, id, source, paint = {}) {
 }
 
 /** Makes a GeoJSON overlay show exactly `features`, removing and adding only what changed (by feature id). */
-export function syncFeatures(map, id, features) {
+export function syncFeatures (map, id, features) {
 	const shown = shownIds.get(id) ?? new Set();
 	const next = new Set(features.map((f) => f.id));
 	map.getSource(id).updateData({
@@ -63,7 +65,7 @@ export function syncFeatures(map, id, features) {
 	shownIds.set(id, next);
 }
 
-export function removeOverlay(map, id) {
+export function removeOverlay (map, id) {
 	for (const l of map.getStyle().layers) if (l.source === id) map.removeLayer(l.id);
 	map.removeSource(id);
 	shownIds.delete(id);
