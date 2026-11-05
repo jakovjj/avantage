@@ -1,0 +1,8 @@
+services:
+  avantage:
+    build: .
+    image: avantage:latest
+    container_name: avantage
+    ports:
+      - "8080:80"
+    restart: unless-stopped
