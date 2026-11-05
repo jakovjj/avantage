@@ -1,0 +1,12 @@
+node_modules
+.svelte-kit
+build
+.*
+!.npmrc
+.env
+.env.*
+*.log
+Dockerfile
+docker-compose.yml
+.dockerignore
+*.md
