@@ -1,6 +1,6 @@
 // OGC services (WMS / WFS / WMTS): capabilities introspection and MapLibre source specs.
 import { WfsEndpoint, WmsEndpoint, WmtsEndpoint } from '@camptocamp/ogc-client';
-import { escapeHtml } from './utils.js';
+import { escapeHtml, fetchText } from './utils.js';
 
 const ENDPOINTS = { WMS: WmsEndpoint, WFS: WfsEndpoint, WMTS: WmtsEndpoint };
 export const MAX_FEATURES = 5000;
@@ -41,6 +41,19 @@ function wmsTiles(endpoint, name) {
 	return url.replace(/BBOX=[^&]*/i, 'BBOX={bbox-epsg-3857}') + '&TRANSPARENT=TRUE';
 }
 
+// OGC scale denominator of a 256 px Web Mercator tile at zoom 0.
+const ZOOM0_SCALE = 559082264.0287178;
+
+/** Tile zooms where a WMS layer draws anything, from its declared scale limits. */
+function wmsZooms(endpoint, name) {
+	const { minScaleDenominator: min, maxScaleDenominator: max } = endpoint.getLayerByName(name) ?? {};
+	return {
+		...(max && { minzoom: Math.max(0, Math.ceil(Math.log2(ZOOM0_SCALE / max))) }),
+		// beyond this the server draws nothing, so MapLibre enlarges these tiles instead
+		...(min && { maxzoom: Math.min(22, Math.floor(Math.log2(ZOOM0_SCALE / min))) })
+	};
+}
+
 // MapLibre only draws Web Mercator tiles, so the layer needs a 3857 matrix set starting at zoom 0.
 function wmtsTiles(endpoint, name) {
 	const layer = endpoint.getLayerByName(name);
@@ -55,11 +68,15 @@ function wmtsTiles(endpoint, name) {
 	throw new Error('Sloj nema EPSG:3857 mrežu pločica');
 }
 
-async function wfsGeojson(endpoint, name) {
-	const url = endpoint.getFeatureUrl(name, { asJson: true, outputCrs: 'EPSG:4326', maxFeatures: MAX_FEATURES });
-	const text = await (await fetch(url)).text();
+/** WFS layer features (GeoJSON, WGS84), optionally inside bbox [w, s, e, n]; null if over maxBytes. */
+export async function getFeatures({ endpoint }, name, { bbox, maxBytes, signal } = {}) {
+	const url = endpoint.getFeatureUrl(name, {
+		asJson: true, outputCrs: 'EPSG:4326', maxFeatures: MAX_FEATURES, extent: bbox, extentCrs: 'EPSG:4326'
+	});
+	const text = await fetchText(url, { maxBytes, signal });
+	if (text === null) return null;
 	try {
-		return JSON.parse(text);
+		return JSON.parse(text).features;
 	} catch {
 		throw new Error(text.slice(0, 300));
 	}
@@ -69,14 +86,18 @@ async function wfsGeojson(endpoint, name) {
 export const providerName = ({ info, capabilitiesUrl }) =>
 	info.provider?.name || info.provider?.contact?.organization || new URL(capabilitiesUrl).host;
 
-/** MapLibre source spec for one layer of an inspected service. */
-export async function layerSource(service, name) {
-	const { type, endpoint } = service;
-	const attribution = escapeHtml(providerName(service));
-	if (type === 'WFS') return { type: 'geojson', data: await wfsGeojson(endpoint, name), attribution };
-	const tiles = [type === 'WMS' ? wmsTiles(endpoint, name) : wmtsTiles(endpoint, name)];
-	return { type: 'raster', tileSize: 256, tiles, attribution };
-}
+/** HTML credit for the map's attribution control. */
+export const attribution = (service) => escapeHtml(providerName(service));
+
+/** MapLibre tile source for a WMS or WMTS layer. */
+export const rasterSource = (service, name) => ({
+	type: 'raster',
+	tileSize: 256,
+	attribution: attribution(service),
+	...(service.type === 'WMS'
+		? { tiles: [wmsTiles(service.endpoint, name)], ...wmsZooms(service.endpoint, name) }
+		: { tiles: [wmtsTiles(service.endpoint, name)] })
+});
 
 export const legendUrl = ({ type, endpoint }, name) =>
 	type === 'WMS' ? endpoint.getLayerByName(name)?.styles[0]?.legendUrl : undefined;

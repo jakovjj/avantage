@@ -12,8 +12,9 @@ Potreban je Node 22.17+.
 
 ## Struktura
 
-- `src/lib/sources.js` – ugrađeni servisi (dodaj novi unos s `url`, `title` i po želji `type`)
+- `src/lib/sources.js` – ugrađeni servisi (dodaj novi unos s `url`, `title` i po želji `type`) i prilagodbe pojedinih slojeva (`id`, `paint`)
 - `src/lib/ogc.js` – GetCapabilities i izvori za kartu ([ogc-client](https://github.com/camptocamp/ogc-client))
+- `src/lib/wfs.js` – WFS slojevi: mali (do 100 KB) se učitaju cijeli, veliki se dohvaćaju za vidljivo područje
 - `src/lib/map.js` – MapLibre karta (podloga [OpenFreeMap](https://openfreemap.org)), slojevi i popupi
 - `src/lib/Source.svelte` – jedan servis u bočnoj traci s popisom slojeva
 
