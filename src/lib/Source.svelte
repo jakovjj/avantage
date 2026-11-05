@@ -1,25 +1,29 @@
 <script>
-	import { inspect, layerSource, legendUrl, providerName, MAX_FEATURES } from './ogc.js';
+	import { inspect, legendUrl, providerName, rasterSource } from './ogc.js';
 	import { addOverlay, removeOverlay } from './map.js';
+	import { showWfs } from './wfs.js';
 
-	let { map, url, type, title, open = false } = $props();
+	let { map, url, type, title, layers = {}, open = false } = $props();
 	let service = $state(), error = $state();
 	let on = $state({}), note = $state({}); // per layer name: checked, status text
+	const hide = {}; // per layer name: removes it from the map
 
 	// GetCapabilities runs only once the group is opened.
 	$effect(() => {
 		if (open && !service && !error) inspect(url, type).then((s) => (service = s), (e) => (error = e.message));
 	});
 
-	async function toggle(name) {
+	function toggle(name) {
 		const id = `${url}#${name}`;
-		if (!on[name]) return map.getSource(id) && removeOverlay(map, id);
-		note[name] = '…';
+		note[name] = '';
+		if (!on[name]) return hide[name]?.();
+		if (service.type === 'WFS') {
+			hide[name] = showWfs(map, id, service, name, layers[name], (t) => (note[name] = t));
+			return;
+		}
 		try {
-			const source = await layerSource(service, name);
-			const n = source.data?.features?.length;
-			note[name] = n == null ? '' : n >= MAX_FEATURES ? `${n}+` : n;
-			if (on[name] && !map.getSource(id)) addOverlay(map, id, source);
+			addOverlay(map, id, rasterSource(service, name));
+			hide[name] = () => removeOverlay(map, id);
 		} catch (e) {
 			note[name] = e.message;
 			on[name] = false;
