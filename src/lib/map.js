@@ -9,6 +9,7 @@ setWorkerUrl(workerUrl);
 const COLORS = ['#e6194b', '#4363d8', '#3cb44b', '#f58231', '#911eb4', '#008080', '#f032e6'];
 let colorIndex = 0;
 const shownIds = new Map(); // GeoJSON overlay id → Set of feature ids currently on the map
+let activePopup; // { popup, sourceId }
 
 const isGeom = (t) => ['in', ['geometry-type'], ['literal', [t, `Multi${t}`]]];
 
@@ -27,7 +28,16 @@ export function createMap (container) {
 	map.addControl(new ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 	map.on('click', (e) => {
 		const f = overlayFeature(map, e.point);
-		if (f) new Popup({ maxWidth: '360px' }).setLngLat(e.lngLat).setHTML(propsTable(f.properties)).addTo(map);
+		if (!f) return;
+		activePopup?.popup.remove();
+		const popup = new Popup({ maxWidth: '360px' })
+			.setLngLat(e.lngLat)
+			.setHTML(propsTable(f.properties))
+			.addTo(map);
+		activePopup = { popup, sourceId: f.source };
+		popup.on('close', () => {
+			if (activePopup?.popup === popup) activePopup = null;
+		});
 	});
 	map.on('mousemove', (e) => (map.getCanvas().style.cursor = overlayFeature(map, e.point) ? 'pointer' : ''));
 	return new Promise((resolve) => map.once('load', () => resolve(map)));
@@ -66,6 +76,10 @@ export function syncFeatures (map, id, features) {
 }
 
 export function removeOverlay (map, id) {
+	if (activePopup?.sourceId === id) {
+		activePopup.popup.remove();
+		activePopup = null;
+	}
 	for (const l of map.getStyle().layers) if (l.source === id) map.removeLayer(l.id);
 	map.removeSource(id);
 	shownIds.delete(id);
