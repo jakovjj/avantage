@@ -15,7 +15,33 @@
 		if (open && !service && !error) inspect(url, type).then((s) => (service = s), (e) => (error = e.message));
 	});
 
-	const shown = $derived((service?.layers ?? []).filter((l) => l.title.toLowerCase().includes(query.toLowerCase())));
+	const layerGroup = (l) => layers[l.name]?.group || (l.title.includes(' - ') ? l.title.split(' - ')[0].trim() : null);
+
+	const prefixCounts = $derived.by(() => {
+		const counts = {};
+		for (const l of service?.layers ?? []) {
+			const g = layerGroup(l);
+			if (g) counts[g] = (counts[g] || 0) + 1;
+		}
+		return counts;
+	});
+
+	const filtered = $derived((service?.layers ?? []).filter((l) => l.title.toLowerCase().includes(query.toLowerCase())));
+
+	const sections = $derived.by(() => {
+		const groups = new Map();
+		const ungrouped = [];
+		for (const l of filtered) {
+			const g = layerGroup(l);
+			if (g && (layers[l.name]?.group || prefixCounts[g] >= 2)) {
+				if (!groups.has(g)) groups.set(g, []);
+				groups.get(g).push(l);
+			} else {
+				ungrouped.push(l);
+			}
+		}
+		return { groups: [...groups.entries()].map(([name, items]) => ({ name, items })), ungrouped };
+	});
 
 	function retry() {
 		error = null;
@@ -53,7 +79,19 @@
 	{:else}
 		<a href={service.capabilitiesUrl} target="_blank" rel="noreferrer">{service.type} endpoint</a>
 		{#if service.layers.length > 10}<input type="search" placeholder="Filtriraj" bind:value={query} />{/if}
-		{#each shown as { name, title } (name)}
+		{#each sections.groups as { name, items } (name)}
+			<details class="group" open={query ? true : undefined}>
+				<summary>{name} <small>({items.length})</small></summary>
+				{#each items as { name: id, title: t } (id)}
+					<label>
+						<input type="checkbox" bind:checked={on[id]} onchange={() => toggle(id)} />
+						{t.startsWith(name + ' - ') ? t.slice(name.length + 3) : t} <small>{note[id] ?? ''}</small>
+					</label>
+					{#if on[id] && legendUrl(service, id)}<img src={legendUrl(service, id)} alt="" />{/if}
+				{/each}
+			</details>
+		{/each}
+		{#each sections.ungrouped as { name, title } (name)}
 			<label>
 				<input type="checkbox" bind:checked={on[name]} onchange={() => toggle(name)} />
 				{title} <small>{note[name] ?? ''}</small>
@@ -66,9 +104,11 @@
 <style>
 	summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 	summary button { float: right; }
+	details.group { margin: 0 0 0 12px; }
+	details.group > summary { font-weight: 500; font-size: 14px; padding: 6px 0; }
 	label { display: flex; gap: 6px; align-items: baseline; padding: 3px 0 3px 12px; cursor: pointer; }
 	a, img, small, input[type='search'], pre + button { display: block; margin: 0 0 6px 12px; }
-	label small { display: inline; margin: 0; }
+	label small, summary small { display: inline; margin: 0; }
 	small, a { color: #666; font-size: 12px; }
 	pre { white-space: pre-wrap; color: #b00; font-size: 12px; }
 </style>

@@ -2,6 +2,7 @@
 // `layers` holds optional per-layer tweaks, keyed by layer name:
 //   id(feature)  stable feature key, for servers whose feature ids change between requests
 //   paint        MapLibre paint overrides per kind: { fill, line, circle }
+//   group        optional group title to group layers in the sidebar
 
 // Habitat class colours by NKS top level (A–K), from the `nks1_style` property.
 const NKS_COLOR = ['match', ['get', 'nks1_style'],
@@ -31,7 +32,12 @@ export default [
 				paint: { fill: { 'fill-color': NKS_COLOR, 'fill-opacity': 0.5 }, line: { 'line-color': NKS_COLOR, 'line-width': 0.5 } }
 			},
 			'dzzpnpis:poucna_info_ploca': { id: (f) => f.properties.poucna_info_ploca_id },
-			'dzzpnpis:poucna_staza': { id: (f) => f.properties.poucna_staza_id }
+			'dzzpnpis:poucna_staza': { id: (f) => f.properties.poucna_staza_id },
+			'dzzpnpis:prijedlog_podrucja_obnove_grupa_1': { group: 'Loše stanje stanišnih tipova' },
+			'dzzpnpis:prijedlog_podrucja_obnove_grupa_2': { group: 'Loše stanje stanišnih tipova' },
+			'dzzpnpis:prijedlog_podrucja_obnove_grupa_3': { group: 'Loše stanje stanišnih tipova' },
+			'dzzpnpis:prijedlog_podrucja_obnove_grupa_4': { group: 'Loše stanje stanišnih tipova' },
+			'dzzpnpis:prijedlog_podrucja_obnove_grupa_6': { group: 'Loše stanje stanišnih tipova' }
 		}
 	},
 	{ title: 'Opasnost od poplava (Hrvatske vode)', type: 'WMS', url: 'https://servisi.voda.hr/poplave_opasnosti/wms' }
