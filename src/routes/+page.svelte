@@ -76,6 +76,7 @@
 	input { flex: 1; min-width: 0; }
 	code { position: fixed; top: 8px; right: 8px; padding: 2px 6px; background: #fffc; font-size: 12px; pointer-events: none; }
 	:global(.maplibregl-popup-content) { max-height: 300px; overflow: auto; font-size: 12px; }
+	:global(.has-overflow .maplibregl-popup-close-button) { right: 14px; }
 	:global(.maplibregl-popup-content th) { text-align: left; color: #666; font-weight: normal; padding-right: 8px; }
 	@media (max-width: 700px) {
 		:global(body) { grid-template-columns: 1fr; grid-template-rows: 40dvh 1fr; }

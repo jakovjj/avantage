@@ -34,6 +34,8 @@ export function createMap (container) {
 			.setLngLat(e.lngLat)
 			.setHTML(propsTable(f.properties))
 			.addTo(map);
+		const content = popup.getElement()?.querySelector('.maplibregl-popup-content');
+		if (content && content.scrollHeight > content.clientHeight) popup.addClassName('has-overflow');
 		activePopup = { popup, sourceId: f.source };
 		popup.on('close', () => {
 			if (activePopup?.popup === popup) activePopup = null;
