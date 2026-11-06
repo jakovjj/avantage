@@ -9,13 +9,16 @@ setWorkerUrl(workerUrl);
 const COLORS = ['#e6194b', '#4363d8', '#3cb44b', '#f58231', '#911eb4', '#008080', '#f032e6'];
 let colorIndex = 0;
 const shownIds = new Map(); // GeoJSON overlay id → Set of feature ids currently on the map
+const nonInteractive = new Set();
 let activePopup; // { popup, sourceId }
 
 const isGeom = (t) => ['in', ['geometry-type'], ['literal', [t, `Multi${t}`]]];
 
 // Only our overlays use GeoJSON sources; the basemap is vector tiles.
 const overlayFeature = (map, point) =>
-	map.queryRenderedFeatures(point).find((f) => map.getSource(f.source)?.type === 'geojson');
+	map.queryRenderedFeatures(point).find((f) =>
+		map.getSource(f.source)?.type === 'geojson' && !nonInteractive.has(f.source)
+	);
 
 /** Resolves with a map of Croatia once its style has loaded. */
 export function createMap (container) {
@@ -52,10 +55,11 @@ export function viewBbox (map, scale = 1) {
 	return [w - dx, s - dy, e + dx, n + dy];
 }
 
-/** Adds a raster or GeoJSON source; `paint` overrides the GeoJSON styles per kind (fill / line / circle). */
-export function addOverlay (map, id, source, paint = {}) {
+/** Adds a raster or GeoJSON source with optional per-layer display tweaks. */
+export function addOverlay (map, id, source, layer = {}) {
 	map.addSource(id, source);
 	if (source.type === 'raster') return map.addLayer({ id, type: 'raster', source: id });
+	if (layer.interactive === false) nonInteractive.add(id);
 	const color = COLORS[colorIndex++ % COLORS.length];
 	const kinds = {
 		fill: [isGeom('Polygon'), { 'fill-color': color, 'fill-opacity': 0.2 }],
@@ -63,7 +67,11 @@ export function addOverlay (map, id, source, paint = {}) {
 		circle: [isGeom('Point'), { 'circle-color': color, 'circle-radius': 5, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1 }]
 	};
 	for (const [type, [filter, base]] of Object.entries(kinds))
-		map.addLayer({ id: `${id}:${type}`, source: id, type, filter, paint: { ...base, ...paint[type] } });
+		map.addLayer({
+			id: `${id}:${type}`, source: id, type, filter,
+			...(Number.isFinite(layer.minZoom) && { minzoom: layer.minZoom }),
+			paint: { ...base, ...layer.paint?.[type] }
+		});
 }
 
 /** Makes a GeoJSON overlay show exactly `features`, removing and adding only what changed (by feature id). */
@@ -85,4 +93,5 @@ export function removeOverlay (map, id) {
 	for (const l of map.getStyle().layers) if (l.source === id) map.removeLayer(l.id);
 	map.removeSource(id);
 	shownIds.delete(id);
+	nonInteractive.delete(id);
 }
