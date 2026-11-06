@@ -23,7 +23,7 @@ export function createMap (container) {
 		style: 'https://tiles.openfreemap.org/styles/positron',
 		bounds: [[13.2, 42.2], [19.7, 46.7]]
 	});
-	map.addControl(new NavigationControl({ showCompass: false }), 'top-right');
+	map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right'); // top-right holds the debug readout
 	map.addControl(new ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 	map.on('click', (e) => {
 		const f = overlayFeature(map, e.point);
