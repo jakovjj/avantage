@@ -23,6 +23,11 @@ shows the layers on a map in a readable way, and **always says where the data co
    the real responses (GetCapabilities, `resultType=hits`, sample GetFeature). Prefer behaviour derived
    automatically from data or capabilities over per-layer hardcoded flags.
 6. **Ask the user when something is unclear** instead of assuming.
+7. **Minimal UI.** No explanatory text, taglines, hints, section headings, footers or decoration. See "UI and
+   language" — this is enforced, not a suggestion.
+8. **NO committing ahead of time.** When a change is done, tell the user what changed and ask them to test it.
+   Commit only after the user says they are satisfied and tells you to commit.
+9. **NEVER push to `main`.** Always work on a branch and open a PR into `main` when the work is done.
 
 ## Stack
 
@@ -46,8 +51,8 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 | `src/lib/map.js` | Everything MapLibre: create map, add/remove overlays, styling defaults, popups, feature diffing, view bbox | know about OGC |
 | `src/lib/wfs.js` | WFS loading strategy (small vs. big layers), glues `ogc.js` + `map.js` | contain UI |
 | `src/lib/utils.js` | Small domain-free helpers (escaping, bbox math, size-capped fetch) | know about OGC or MapLibre |
-| `src/lib/Source.svelte` | UI for one service: layer list, toggles, status notes, legend | fetch data or build map layers itself |
-| `src/routes/+page.svelte` | Page layout, sidebar, "add service" form, map container | contain map/OGC logic |
+| `src/lib/Source.svelte` | UI for one service: layer list, toggles, status notes, legend, "`<TYPE>` endpoint" link | fetch data or build map layers itself |
+| `src/routes/+page.svelte` | Page layout, sidebar, "add service" form, map container, debug readout | contain map/OGC logic |
 
 ## Data loading rules (don't break these)
 
@@ -94,10 +99,19 @@ New tweak types must be generic (applied by `map.js`/`wfs.js`), not special-case
 
 ## UI and language
 
-- UI text is **Croatian** and short; less text is better. Explanations for users will be added deliberately later.
+- UI text is **Croatian** and as short as possible; less text is better. Explanations for users will be added
+  deliberately later, by the user — never add them on your own.
+- **Not allowed** in the UI: subtitles/taglines (e.g. "Otvoreni prostorni podaci Hrvatske"), section headings
+  (e.g. "Dodaj servis"), hint paragraphs (e.g. "Podržani su WMS, WFS i WMTS…"), footers or credits in the sidebar,
+  logos, counters/badges, spinners, empty-state prose.
+- **CSS stays small and plain**: native form controls (no custom checkboxes), no rounded corners, no shadows,
+  gradients, animations or transitions, no colour themes/variables. A few lines per component is the target.
+- Sidebar: `Avantage` title, the URL form, then one `<details>` per service. A service links to its
+  GetCapabilities document with the text **`<TYPE> endpoint`** (e.g. "WFS endpoint"), nothing more.
+- The data provider (from GetCapabilities) is credited in the MapLibre attribution, not in the sidebar.
+- Debug readout: `lat, lon · z zoom` (two decimals each) in the **top-right** corner of the map. Map controls must
+  not cover it.
 - Code, identifiers and comments are **English**. Comments explain *why*, briefly.
-- Always show the data provider (from GetCapabilities) and link to the GetCapabilities document; MapLibre
-  attribution carries the provider too.
 - `localStorage` is only for per-user conveniences (e.g. custom services) and every access is wrapped in
   `try/catch`.
 
@@ -121,7 +135,10 @@ New tweak types must be generic (applied by `map.js`/`wfs.js`), not special-case
 
 ## Git
 
-- Work on a branch and open a PR into `main`; don't commit directly to `main`.
+- **NEVER push to `main`** and never commit on `main`. Create a branch before the first edit, and open a PR into
+  `main` when the work is done.
+- **NO committing ahead of time.** Finish the change, verify it yourself, then ask the user to test it. Commit only
+  when the user explicitly says so; push and open the PR only when asked.
 - Commit messages in **Croatian**, matching the history.
 - **No AI attribution**: no `Co-Authored-By` trailers for AI tools and no "Generated with …" lines in commits or PRs.
 - Don't commit `node_modules/`, `build/`, `.svelte-kit/` or IDE folders (`.idea/`).
