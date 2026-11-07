@@ -207,92 +207,6 @@
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/ekolo-ka-mre-a-natura-2000"
   },
   {
-    "name": "Centralni sustav upravljanja informacijama o odlagalištima - WFS",
-    "url": "http://servisi.azo.hr/otpad/wfs?request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Centralni sustav upravljanja informacijama o odlagalištima",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/centralni-sustav-upravljanja-informacijama-o-odlagali-tima"
-  },
-  {
-    "name": "Centralni sustav upravljanja informacijama o odlagalištima - WMS",
-    "url": "http://servisi.azo.hr/otpad/wms?request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Centralni sustav upravljanja informacijama o odlagalištima",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/centralni-sustav-upravljanja-informacijama-o-odlagali-tima"
-  },
-  {
-    "_comment": "Duplikat: Ekološka mreža Natura 2000 - WFS",
-    "name": "Katastar speleoloških objekata Republike Hrvatske - WFS",
-    "url": "http://services.iszp.hr/wfs",
-    "format": "WFS",
-    "dataset": "Katastar speleoloških objekata Republike Hrvatske",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/katastar-speleolo-kih-objekata"
-  },
-  {
-    "_comment": "Duplikat: Ekološka mreža Natura 2000 - WMS",
-    "name": "Katastar speleoloških objekata Republike Hrvatske - WMS",
-    "url": "http://services.iszp.hr/wms",
-    "format": "WMS",
-    "dataset": "Katastar speleoloških objekata Republike Hrvatske",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/katastar-speleolo-kih-objekata"
-  },
-  {
-    "_comment": "Duplikat: Eksploatacijska i istražna polja mineralnih sirovina u Republici Hrvatskoj - WFS",
-    "name": "Registar onečišćavanja okoliša - WFS",
-    "url": "http://servisi.azo.hr/industrija/wfs?request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Registar onečišćavanja okoliša",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/registar-one-i-avanja-okoli-a"
-  },
-  {
-    "_comment": "Duplikat: Eksploatacijska i istražna polja mineralnih sirovina u Republici Hrvatskoj - WMS",
-    "name": "Registar onečišćavanja okoliša - WMS",
-    "url": "http://servisi.azo.hr/industrija/wms?request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Registar onečišćavanja okoliša",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/registar-one-i-avanja-okoli-a"
-  },
-  {
-    "_comment": "Duplikat: Ekološka mreža Natura 2000 - WMS",
-    "name": "Zaštićena područja RH - WMS",
-    "url": "http://services.iszp.hr/wms",
-    "format": "WMS",
-    "dataset": "Zaštićena područja RH",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/za-ti-ena-podru-ja-rh"
-  },
-  {
-    "_comment": "Duplikat: Ekološka mreža Natura 2000 - WFS",
-    "name": "Zaštićena područja RH - WFS",
-    "url": "http://services.iszp.hr/wfs",
-    "format": "WFS",
-    "dataset": "Zaštićena područja RH",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/za-ti-ena-podru-ja-rh"
-  },
-  {
-    "_comment": "Duplikat: Pokrov i namjena korištenja zemljišta CORINE Land Cover - WFS",
-    "name": "Slojevi visoke rezolucije (HR slojevi) - WFS",
-    "url": "http://servisi.azo.hr/tlo/wfs?request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Slojevi visoke rezolucije (HR slojevi)",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/slojevi-visoke-rezolucije-hr-slojevi"
-  },
-  {
-    "_comment": "Duplikat: Pokrov i namjena korištenja zemljišta CORINE Land Cover - WMS",
-    "name": "Slojevi visoke rezolucije (HR slojevi) - WMS",
-    "url": "http://servisi.azo.hr/tlo/wms?request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Slojevi visoke rezolucije (HR slojevi)",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/slojevi-visoke-rezolucije-hr-slojevi"
-  },
-  {
-    "name": "Pritisci i prijetnje na prirodne vrijednosti - WFS",
-    "url": "http://servisi.azo.hr/priroda/wfs?request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Pritisci i prijetnje na prirodne vrijednosti",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/pritisci-i-prijetnje-na-prirodne-vrijednosti"
-  },
-  {
-    "_comment": "Duplikat: Pritisci i prijetnje na prirodne vrijednosti - WFS",
     "name": "Pritisci i prijetnje na prirodne vrijednosti - WFS",
     "url": "http://servisi.azo.hr/priroda/wfs?request=GetCapabilities",
     "format": "WFS",
@@ -314,83 +228,11 @@
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/popis-pravnih-osoba-koje-obavljaju-djelatnosti-u-podru-ju-za-tite-zraka"
   },
   {
-    "_comment": "Duplikat: Pritisci i prijetnje na prirodne vrijednosti - WFS",
-    "name": "Oštećenost šumskih ekosustava RH s opisom biljnih zajednica od 1997. do 2004. godine - WFS",
-    "url": "http://servisi.azo.hr/priroda/wfs?request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Oštećenost šumskih ekosustava RH s opisom biljnih zajednica od 1997. do 2004. godine",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/o-te-enost-umskih-ekosustava-rh-s-opisom-biljnih-zajednica"
-  },
-  {
     "name": "Oštećenost šumskih ekosustava RH s opisom biljnih zajednica od 1997. do 2004. godine - WMS",
     "url": "http://servisi.azo.hr/priroda/wms?request=GetCapabilities",
     "format": "WMS",
     "dataset": "Oštećenost šumskih ekosustava RH s opisom biljnih zajednica od 1997. do 2004. godine",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/o-te-enost-umskih-ekosustava-rh-s-opisom-biljnih-zajednica"
-  },
-  {
-    "_comment": "Duplikat: Eksploatacijska i istražna polja mineralnih sirovina u Republici Hrvatskoj - WFS",
-    "name": "Očevidnik uporabnih dozvola i rješenja o objedinjenim uvjetima zaštite okoliša - WFS",
-    "url": "http://servisi.azo.hr/industrija/wfs?request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Očevidnik uporabnih dozvola i rješenja o objedinjenim uvjetima zaštite okoliša",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/o-evidnik-uporabnih-dozvola-i-rje-enja-o-objedinjenim-uvjetima-za-tite-okoli-a"
-  },
-  {
-    "_comment": "Duplikat: Eksploatacijska i istražna polja mineralnih sirovina u Republici Hrvatskoj - WMS",
-    "name": "Očevidnik uporabnih dozvola i rješenja o objedinjenim uvjetima zaštite okoliša - WMS",
-    "url": "http://servisi.azo.hr/industrija/wms?request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Očevidnik uporabnih dozvola i rješenja o objedinjenim uvjetima zaštite okoliša",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/o-evidnik-uporabnih-dozvola-i-rje-enja-o-objedinjenim-uvjetima-za-tite-okoli-a"
-  },
-  {
-    "_comment": "Duplikat: Pritisci i prijetnje na prirodne vrijednosti - WFS",
-    "name": "Kartiranje i procjena ekosustava i njihovih usluga - WFS",
-    "url": "http://servisi.azo.hr/priroda/wfs?request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Kartiranje i procjena ekosustava i njihovih usluga",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/kartiranje-i-procjena-ekosustava-i-njihovih-usluga"
-  },
-  {
-    "_comment": "Duplikat: Oštećenost šumskih ekosustava RH s opisom biljnih zajednica od 1997. do 2004. godine - WMS",
-    "name": "Kartiranje i procjena ekosustava i njihovih usluga - WMS",
-    "url": "http://servisi.azo.hr/priroda/wms?request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Kartiranje i procjena ekosustava i njihovih usluga",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/kartiranje-i-procjena-ekosustava-i-njihovih-usluga"
-  },
-  {
-    "_comment": "Duplikat: Ekološka mreža Natura 2000 - WMS",
-    "name": "Karta staništa RH - WMS",
-    "url": "http://services.iszp.hr/wms",
-    "format": "WMS",
-    "dataset": "Karta staništa RH",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/karta-stani-ta-rh"
-  },
-  {
-    "_comment": "Duplikat: Ekološka mreža Natura 2000 - WMS",
-    "name": "Karta staništa RH - WMS",
-    "url": "http://services.iszp.hr/wms?request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Karta staništa RH",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/karta-stani-ta-rh"
-  },
-  {
-    "_comment": "Duplikat: Ekološka mreža Natura 2000 - WFS",
-    "name": "Karta staništa RH - WFS",
-    "url": "http://services.iszp.hr/wfs",
-    "format": "WFS",
-    "dataset": "Karta staništa RH",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/karta-stani-ta-rh"
-  },
-  {
-    "_comment": "Duplikat: Pritisci i prijetnje na prirodne vrijednosti - WFS",
-    "name": "Karta staništa RH - WFS",
-    "url": "http://servisi.azo.hr/priroda/wfs?request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Karta staništa RH",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/karta-stani-ta-rh"
   },
   {
     "name": "Kakvoća prijelaznih, priobalnih i morskih voda, ribarstvo i marikultura - WMS - WMS",
@@ -414,29 +256,6 @@
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/karta-stanista-republike-hrvatske-2004-wms"
   },
   {
-    "name": "Karta staništa Republike Hrvatske 2004 - WFS - WFS",
-    "url": "http://services.bioportal.hr/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Karta staništa Republike Hrvatske 2004 - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/karta-stanista-republike-hrvatske-2004-wfs"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WFS - WFS",
-    "name": "Karta kopnenih nešumskih staništa Republike Hrvatske 2016 - WFS - WFS",
-    "url": "http://services.bioportal.hr/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Karta kopnenih nešumskih staništa Republike Hrvatske 2016 - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/karta-kopnenih-nesumskih-stanista-republike-hrvatske-2016-wfs"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WMS - WMS",
-    "name": "Karta kopnenih nešumskih staništa Republike Hrvatske 2016 - WMS - WMS",
-    "url": "http://services.bioportal.hr/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Karta kopnenih nešumskih staništa Republike Hrvatske 2016 - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/karta-kopnenih-nesumskih-stanista-republike-hrvatske-2016-wms"
-  },
-  {
     "name": "Kvaliteta zraka u Republici Hrvatskoj - WMS - INSPIRE harmoniziran - EnvHealthDeterminantMeasure - WMS",
     "url": "http://servisi.azo.hr/inspire/geos1/hh/wms?service=WMS&version=1.3.0&request=GetCapabilities",
     "format": "WMS",
@@ -451,35 +270,11 @@
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/kvaliteta-zraka-u-republici-hrvatskoj-wms-inspire-harmoniziran-environmentalmonitoringfacility"
   },
   {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WFS - WFS",
-    "name": "Međunarodna proglašenja - WFS - WFS",
-    "url": "http://services.bioportal.hr/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Međunarodna proglašenja - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/medjunarodna-proglasenja-wfs"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WMS - WMS",
-    "name": "Međunarodna proglašenja - WMS - WMS",
-    "url": "http://services.bioportal.hr/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Međunarodna proglašenja - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/medjunarodna-proglasenja-wms"
-  },
-  {
     "name": "Osjetljiva područja - WMS - WMS",
     "url": "https://servisi.voda.hr/public_ows/wms?SERVICE=WMS&REQUEST=GetCapabilities",
     "format": "WMS",
     "dataset": "Osjetljiva područja - WMS",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/osjetljiva-podrucja-wms"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WMS - WMS",
-    "name": "Osnovne informacije o Javnim ustanovama koje upravljaju zaštićenim područjima - WMS - WMS",
-    "url": "http://services.bioportal.hr/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Osnovne informacije o Javnim ustanovama koje upravljaju zaštićenim područjima - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/osnovne-informacije-o-javnim-ustanovama-koje-upravljaju-zasticenim-podrucjima-wms"
   },
   {
     "name": "Popis pravnih osoba koje obavljaju djelatnosti u području zaštite zraka - WFS",
@@ -510,22 +305,6 @@
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/ocevidnik-prijavljenih-velikih-nesreca-wms-inspire-harmoniziran"
   },
   {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WFS - WFS",
-    "name": "Osnovne informacije o Javnim ustanovama koje upravljaju zaštićenim područjima - WFS - WFS",
-    "url": "http://services.bioportal.hr/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Osnovne informacije o Javnim ustanovama koje upravljaju zaštićenim područjima - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/osnovne-informacije-o-javnim-ustanovama-koje-upravljaju-zasticenim-podrucjima-wfs"
-  },
-  {
-    "_comment": "Duplikat: Osjetljiva područja - WMS - WMS",
-    "name": "Osjetljiva područja - WMS",
-    "url": "https://servisi.voda.hr/public_ows/wms?SERVICE=WMS&REQUEST=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Osjetljiva područja",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/osjetljiva-podrucja"
-  },
-  {
     "name": "Pokrov i namjena korištenja zemljišta CORINE Land Cover - WFS - INSPIRE harmoniziran - WFS",
     "url": "http://servisi.azo.hr/inspire/geos1/lcv/wfs?service=WFS&version=2.0.0&request=GetCapabilities",
     "format": "WFS",
@@ -552,38 +331,6 @@
     "format": "WMS",
     "dataset": "Područja gospodarskih jedinica za državne šume",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/podrucja-gospodarskih-jedinica-za-drzavne-sume"
-  },
-  {
-    "_comment": "Duplikat: Osjetljiva područja - WMS - WMS",
-    "name": "Područja sa potencijalno značajnim rizicima od poplava - WMS - WMS",
-    "url": "https://servisi.voda.hr/public_ows/wms?SERVICE=WMS&REQUEST=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Područja sa potencijalno značajnim rizicima od poplava - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/podru-ja-sa-potencijalno-znacajnim-rizicima-od-poplava-wms"
-  },
-  {
-    "_comment": "Duplikat: Osjetljiva područja - WMS - WMS",
-    "name": "Područja sa potencijalno značajnim rizicima od poplava - WMS",
-    "url": "https://servisi.voda.hr/public_ows/wms?SERVICE=WMS&REQUEST=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Područja sa potencijalno značajnim rizicima od poplava",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/podrucja-sa-potencijalno-znacajnim-rizicima-od-poplava"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WFS - WFS",
-    "name": "Posjetiteljska infrastruktura u zaštićenim područjima Republike Hrvatske - WFS - WFS",
-    "url": "http://services.bioportal.hr/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Posjetiteljska infrastruktura u zaštićenim područjima Republike Hrvatske - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/posjetiteljska-infrastruktura-u-zasticenim-podrucjima-republike-hrvatske-wfs"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WMS - WMS",
-    "name": "Posjetiteljska infrastruktura u zaštićenim područjima Republike Hrvatske - WMS - WMS",
-    "url": "http://services.bioportal.hr/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Posjetiteljska infrastruktura u zaštićenim područjima Republike Hrvatske - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/posjetiteljska-infrastruktura-u-zasticenim-podrucjima-republike-hrvatske-wms"
   },
   {
     "name": "Registar onečišćavanja okoliša - WFS - INSPIRE harmoniziran - WFS",
@@ -635,30 +382,6 @@
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/seveso-postrojenja-integrirane-informacije-wfs"
   },
   {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WMS - WMS",
-    "name": "Saproksilni kornjaši - WMS - WMS",
-    "url": "http://services.bioportal.hr/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Saproksilni kornjaši - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/saproksilni-kornjasi-wms"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WFS - WFS",
-    "name": "Saproksilni kornjaši - WFS - WFS",
-    "url": "http://services.bioportal.hr/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Saproksilni kornjaši - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/saproksilni-kornjasi-wfs"
-  },
-  {
-    "_comment": "Duplikat: Registar zaštićenih područja - područja posebne zaštite voda - WMS",
-    "name": "Registar zaštićenih područja - područja posebne zaštite voda - WMS - WMS",
-    "url": "https://servisi.voda.hr/zasticena_podrucja/wms?SERVICE=WMS&REQUEST=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Registar zaštićenih područja - područja posebne zaštite voda - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/registar-zasticenih-podrucja-podrucja-posebne-zastite-voda-wms"
-  },
-  {
     "name": "Seveso postrojenja - integrirane informacije - WMS - WMS",
     "url": "http://pproo.azo.hr/geoserver/bifisic_sevesoestablishments/ows?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetCapabilities",
     "format": "WMS",
@@ -671,54 +394,6 @@
     "format": "WMS",
     "dataset": "Seveso postrojenja - informacije o koordiniranim inspekcijama - WMS",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/seveso-postrojenja-informacije-o-koordiniranim-inspekcijama-wms"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WFS - WFS",
-    "name": "Upravljačke zone u zaštićenim područjima - WFS - WFS",
-    "url": "http://services.bioportal.hr/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Upravljačke zone u zaštićenim područjima - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/upravljacke-zone-u-zasticenim-podrucjima-wfs"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WMS - WMS",
-    "name": "Upravljačke zone u zaštićenim područjima - WMS - WMS",
-    "url": "http://services.bioportal.hr/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Upravljačke zone u zaštićenim područjima - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/upravljacke-zone-u-zasticenim-podrucjima-wms"
-  },
-  {
-    "_comment": "Duplikat: Pokrov i namjena korištenja zemljišta CORINE Land Cover - WMS",
-    "name": "Promjena zaliha ugljika u tlu i izračun trendova ukupnog dušika i organskog ugljika u tlu te odnosa C:N - WMS - WMS",
-    "url": "http://servisi.azo.hr/tlo/wms?request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Promjena zaliha ugljika u tlu i izračun trendova ukupnog dušika i organskog ugljika u tlu te odnosa C:N - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/zaliha-ugljika-u-tlu-izracun-trendova-ukupnog-dusika-i-organskog-ugljika-te-odnosa-c-n-wms"
-  },
-  {
-    "_comment": "Duplikat: Pokrov i namjena korištenja zemljišta CORINE Land Cover - WFS",
-    "name": "Promjena zaliha ugljika u tlu i izračun trendova ukupnog dušika i organskog ugljika u tlu te odnosa C:N - WFS - WFS",
-    "url": "http://servisi.azo.hr/tlo/wfs?request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Promjena zaliha ugljika u tlu i izračun trendova ukupnog dušika i organskog ugljika u tlu te odnosa C:N - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/zaliha-ugljika-u-tlu-izracun-trendova-ukupnog-dusika-i-organskog-ugljika-te-odnosa-c-n-wfs"
-  },
-  {
-    "_comment": "Duplikat: Ekološka mreža Natura 2000 - WMS",
-    "name": "Bioportal ‒ Web portal Informacijskog sustava - WMS",
-    "url": "http://services.iszp.hr/wms",
-    "format": "WMS",
-    "dataset": "Bioportal ‒ Web portal Informacijskog sustava",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/informacijski-sustav-za-tite-prirode-bioportal-i-interni-portal"
-  },
-  {
-    "_comment": "Duplikat: Ekološka mreža Natura 2000 - WFS",
-    "name": "Bioportal ‒ Web portal Informacijskog sustava - WFS",
-    "url": "http://services.iszp.hr/wfs",
-    "format": "WFS",
-    "dataset": "Bioportal ‒ Web portal Informacijskog sustava",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/informacijski-sustav-za-tite-prirode-bioportal-i-interni-portal"
   },
   {
     "name": "Informacijski sustav strateških karata buke i akcijskih planova - WFS - WFS",
@@ -791,14 +466,6 @@
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/podjele-na-listove"
   },
   {
-    "_comment": "Duplikat: Topografske karte - WMS",
-    "name": "Topografske karte - WMS",
-    "url": "http://geoportal.dgu.hr/services/tk/wms?SERVICE=WMS&REQUEST=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Podjele na listove",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/podjele-na-listove"
-  },
-  {
     "name": "Registar geografskih imena - WFS INSPIRE",
     "url": "https://rgi.dgu.hr/geoserver/gn/wfs?service=WFS&request=GetCapabilities&version=2.0.0",
     "format": "WFS",
@@ -811,38 +478,6 @@
     "format": "WMS",
     "dataset": "Registar geografskih imena - INSPIRE",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/registar-geografskih-imena-inspire"
-  },
-  {
-    "_comment": "Duplikat: Topografske karte - WMS (registrirani korisnici)",
-    "name": "Topografske karte - WMS (registrirani korisnici)",
-    "url": "https://geoportal.dgu.hr/services/auth/tk/wms?SERVICE=WMS&REQUEST=GetCapabilities&authKey=12345",
-    "format": "WMS",
-    "dataset": "Topografska karta u mjerilu 1:100000 (TK100)",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/topografska-karta-u-mjerilu-1-100000-tk100"
-  },
-  {
-    "_comment": "Duplikat: Topografske karte - WMTS (registrirani korisnici)",
-    "name": "Topografske karte - WMTS (registrirani korisnici)",
-    "url": "https://geoportal.dgu.hr/services/auth/dof_hok_tk/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&authKey=12345",
-    "format": "WMS",
-    "dataset": "Topografska karta u mjerilu 1:100000 (TK100)",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/topografska-karta-u-mjerilu-1-100000-tk100"
-  },
-  {
-    "_comment": "Duplikat: Topografske karte - WMS (registrirani korisnici)",
-    "name": "Topografske karte - WMS (registrirani korisnici)",
-    "url": "https://geoportal.dgu.hr/services/auth/tk/wms?SERVICE=WMS&REQUEST=GetCapabilities&authKey=12345",
-    "format": "WMS",
-    "dataset": "Topografska karta u mjerilu 1:25000",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/topografska-karta-u-mjerilu-1-25000"
-  },
-  {
-    "_comment": "Duplikat: Topografske karte - WMTS (registrirani korisnici)",
-    "name": "Topografske karte - WMTS (registrirani korisnici)",
-    "url": "https://geoportal.dgu.hr/services/auth/dof_hok_tk/wmts?SERVICE=WMTS&REQUEST=GetCapabilities&authKey=12345",
-    "format": "WMS",
-    "dataset": "Topografska karta u mjerilu 1:25000",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/topografska-karta-u-mjerilu-1-25000"
   },
   {
     "name": "Pokrov zemljišta - WMS INSPIRE (registrirani korisnici)",
@@ -866,14 +501,6 @@
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/nacin-uporabe-zemljista-iz-digitalnog-katastarskog-plana-inspire"
   },
   {
-    "_comment": "Duplikat: Zgrade iz Digitalnog katastarskog plana - WFS INSPIRE",
-    "name": "Zgrade iz Digitalnog katastarskog plana - WFS INSPIRE",
-    "url": "https://api.uredjenazemlja.hr/services/inspire/bu/wfs?request=GetCapabilities&service=WFS",
-    "format": "WFS",
-    "dataset": "Način uporabe zemljišta iz Digitalnog katastarskog plana - INSPIRE",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/nacin-uporabe-zemljista-iz-digitalnog-katastarskog-plana-inspire"
-  },
-  {
     "name": "Prometne mreže - WMS INSPIRE (anonimni korisnici)",
     "url": "https://geoportal.dgu.hr/services/inspire/tn/wms?service=WMS&version=1.3.0&request=GetCapabilities",
     "format": "WMS",
@@ -888,59 +515,11 @@
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/sustavi-geografskih-mreza-inspire"
   },
   {
-    "_comment": "Duplikat: Popis pravnih osoba koje obavljaju djelatnosti u području zaštite zraka - WFS",
-    "name": "Hlapivi organski spojevi u bojama i lakovima - WFS - WFS",
-    "url": "http://servisi.azo.hr/zrak/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Hlapivi organski spojevi u bojama i lakovima - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/hlapivi-organski-spojevi-u-bojama-i-lakovima-wfs"
-  },
-  {
     "name": "Hrvatska osnovna karta HOK - WMS (registrirani korisnici)",
     "url": "https://geoportal.dgu.hr/services/auth/hok/wms?SERVICE=WMS&REQUEST=GetCapabilities&authKey=12345",
     "format": "WMS",
     "dataset": "Hrvatska osnovna karta u mjerilu 1:5000",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/hrvatska-osnovna-karta-u-mjerilu-1-5000"
-  },
-  {
-    "_comment": "Duplikat: Popis pravnih osoba koje obavljaju djelatnosti u području zaštite zraka - WMS",
-    "name": "Hlapivi organski spojevi u bojama i lakovima - WMS - WMS",
-    "url": "http://servisi.azo.hr/zrak/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Hlapivi organski spojevi u bojama i lakovima - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/hlapivi-organski-spojevi-u-bojama-i-lakovima-wms"
-  },
-  {
-    "_comment": "Duplikat: Centralni sustav upravljanja informacijama o odlagalištima - WMS",
-    "name": "Gospodarenje otpadom - WMS - WMS",
-    "url": "http://servisi.azo.hr/otpad/wms?request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Gospodarenje otpadom - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/gospodarenje-otpadom-wms"
-  },
-  {
-    "_comment": "Duplikat: Centralni sustav upravljanja informacijama o odlagalištima - WFS",
-    "name": "Gospodarenje otpadom - WFS - WFS",
-    "url": "http://servisi.azo.hr/otpad/wfs?request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Gospodarenje otpadom - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/gospodarenje-otpadom-wfs"
-  },
-  {
-    "_comment": "Duplikat: Kakvoća prijelaznih, priobalnih i morskih voda, ribarstvo i marikultura - WMS - WMS",
-    "name": "Godišnje ocjene kakvoće mora za kupanje u Republici Hrvatskoj - WMS - WMS",
-    "url": "http://servisi.azo.hr/more/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Godišnje ocjene kakvoće mora za kupanje u Republici Hrvatskoj - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/godisnje-ocjene-kakvoce-mora-za-kupanje-u-republici-hrvatskoj-wms"
-  },
-  {
-    "_comment": "Duplikat: Kakvoća prijelaznih, priobalnih i morskih voda, ribarstvo i marikultura - WFS - WFS",
-    "name": "Godišnje ocjene kakvoće mora za kupanje u Republici Hrvatskoj - WFS - WFS",
-    "url": "http://servisi.azo.hr/more/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Godišnje ocjene kakvoće mora za kupanje u Republici Hrvatskoj - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/godi-nje-ocjene-kakvoce-mora-za-kupanje-u-republici-hrvatskoj-wfs"
   },
   {
     "name": "Posebni pravni režimi u okviru projekta\" Evidentiranje posebnog pravnog režima kao doprinos učinkovitijem upravljanju zaštićenim područjima\" - WFS",
@@ -957,241 +536,147 @@
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/evidentiranje-posebnog-pravnog-rezima-kao-doprinos-ucinkovitijem-upravljanju-zasticenim-podrucjima"
   },
   {
-    "_comment": "Duplikat: Popis pravnih osoba koje obavljaju djelatnosti u području zaštite zraka - WFS",
-    "name": "Emisije hlapivih organskih spojeva - WFS - WFS",
-    "url": "http://servisi.azo.hr/zrak/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Emisije hlapivih organskih spojeva - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/emisije-hlapivih-organskih-spojeva-wfs"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WFS - WFS",
-    "name": "Ekološka mreža Natura 2000 Republike Hrvatske - WFS",
-    "url": "http://services.bioportal.hr/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Ekološka mreža Natura 2000 Republike Hrvatske",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/ekoloska-mreza-natura-2000-republike-hrvatske"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WMS - WMS",
-    "name": "Ekološka mreža Natura 2000 Republike Hrvatske - WMS",
-    "url": "http://services.bioportal.hr/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Ekološka mreža Natura 2000 Republike Hrvatske",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/ekoloska-mreza-natura-2000-republike-hrvatske"
-  },
-  {
-    "_comment": "Duplikat: Registar postrojenja u kojima je utvrđena prisutnost opasnih tvari - WMS - WMS",
-    "name": "Eksploatacijska i istražna polja mineralnih sirovina u Republici Hrvatskoj - WMS - WMS",
-    "url": "http://servisi.azo.hr/industrija/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Eksploatacijska i istražna polja mineralnih sirovina u Republici Hrvatskoj - WMS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/eksploatacijska-i-istrazna-polja-mineralnih-sirovina-u-republici-hrvatskoj-wms"
-  },
-  {
-    "name": "Digitalni ortofoto 2014./16. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2014./16. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2014-2016/wms?service=WMS&request=GetCapabilities&authKey=12345",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2014./16. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2014-16-godina"
   },
   {
-    "_comment": "Duplikat: Registar postrojenja u kojima je utvrđena prisutnost opasnih tvari - WFS - WFS",
-    "name": "Eksploatacijska i istražna polja mineralnih sirovina u Republici Hrvatskoj - WFS - WFS",
-    "url": "http://servisi.azo.hr/industrija/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Eksploatacijska i istražna polja mineralnih sirovina u Republici Hrvatskoj - WFS",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/eksploatacijska-i-istrazna-polja-mineralnih-sirovina-rh"
-  },
-  {
-    "name": "Digitalni ortofoto u mjerilu 1:500 višegodišnjeg programa katastarskih izmjera građevinskih područja – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto u mjerilu 1:500 višegodišnjeg programa katastarskih izmjera građevinskih područja - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_500_gp/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:500 višegodišnjeg programa katastarskih izmjera građevinskih područja",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-500-visegodisnjeg-programa-katastarskih-izmjera-gradevinskih-podrucja"
   },
   {
-    "name": "Digitalni ortofoto 2023./24. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2023./24. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2023_2024/wms?authKey=12345&service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2023. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2023-godina"
   },
   {
-    "name": "Digitalni ortofoto 2023. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2023. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2023/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2023. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2023-godina"
   },
   {
-    "name": "Digitalni ortofoto u mjerilu 1:500 potres Sisačko-moslavačka županija – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto u mjerilu 1:500 potres Sisačko-moslavačka županija - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_500/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:500 potres Sisačko-moslavačka županija",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-500-potres-sisacko-moslavacka-zupanija"
   },
   {
-    "name": "Digitalni ortofoto u mjerilu 1:500 potres Sisačko–moslavačka županija – WMTS za registrirane korisnike",
+    "name": "Digitalni ortofoto u mjerilu 1:500 potres Sisačko-moslavačka županija - WMTS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/orthophoto_500/wmts?service=WMTS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:500 potres Sisačko-moslavačka županija",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-500-potres-sisacko-moslavacka-zupanija"
   },
   {
-    "name": "Divlji deponiji otpada u speleološkim objektima - WFS",
-    "url": "http://servisi.azo.hr/otpad/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Divlji deponiji otpada u speleološkim objektima",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/divlji-deponiji-otpada-u-speleoloskim-objektima"
-  },
-  {
-    "name": "Divlji deponiji otpada u speleološkim objektima - WMS",
-    "url": "http://servisi.azo.hr/otpad/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Divlji deponiji otpada u speleološkim objektima",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/divlji-deponiji-otpada-u-speleoloskim-objektima"
-  },
-  {
-    "_comment": "Duplikat: Digitalni ortofoto 2023./24. – WMS za registrirane korisnike",
-    "name": "Digitalni ortofoto 2023./24. – WMS za registrirane korisnike",
-    "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2023_2024/wms?authKey=12345&service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Digitalni ortofoto u mjerilu 1:5000 2024. godina",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2024-godina"
-  },
-  {
-    "name": "Digitalni ortofoto 2024. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2024. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2024/wms?authKey=12345&service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2024. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2024-godina"
   },
   {
-    "name": "Digitalni ortofoto 2024. – WMTS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2024. - WMTS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/orthophoto_2024/wmts?authKey=12345&service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2024. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2024-godina"
   },
   {
-    "name": "Digitalni ortofoto 2017./18. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2017./18. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2017_2018/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2018. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2018-godina"
   },
   {
-    "name": "Digitalni ortofoto 2018. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2018. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2018/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2018. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2018-godina"
   },
   {
-    "name": "Digitalni ortofoto 2019./20. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2019./20. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2019_2020/wms?authKey=12345&service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2019. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2019-godina"
   },
   {
-    "name": "Digitalni ortofoto 2019. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2019. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2019/wms?authKey=12345&service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2019. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2019-godina"
   },
   {
-    "name": "Digitalni ortofoto 2021./22. – WMS za anonimne korisnike",
+    "name": "Digitalni ortofoto 2021./22. - WMS za anonimne korisnike",
     "url": "https://geoportal.dgu.hr/services/inspire/orthophoto_2021_2022/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2022. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2022-godina"
   },
   {
-    "name": "Digitalni ortofoto 2022. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2022. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2022/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2022. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2022-godina"
   },
   {
-    "name": "Digitalni ortofoto 2011. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2011. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2011/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2011. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2011-godina"
   },
   {
-    "name": "Digitalni ortofoto 2021./22. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2021./22. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2021_2022/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2021. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2021-godina"
   },
   {
-    "name": "Digitalni ortofoto 2021. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2021. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2021/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2021. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2021-godina"
   },
   {
-    "_comment": "Duplikat: Digitalni ortofoto 2017./18. – WMS za registrirane korisnike",
-    "name": "Digitalni ortofoto 2017./18. – WMS za registrirane korisnike",
-    "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2017_2018/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Digitalni ortofoto u mjerilu 1:5000 2017. godina",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2017-godina"
-  },
-  {
-    "name": "Digitalni ortofoto 2017. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto 2017. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2017/wms?service=WMS&request=GetCapabilities&authKey=12345",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2017. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-5000-2017-godina"
   },
   {
-    "name": "Digitalni ortofoto LIDAR 2022./23. – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto LIDAR 2022./23. - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_lidar_2022_2023/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto LIDAR u mjerilu 1:5000 2022./23. godina",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-lidar-u-mjerilu-1-5000-2022-23-godina"
   },
   {
-    "name": "Digitalni ortofoto u mjerilu 1:1000 potres Grad Zagreb – WMS za registrirane korisnike",
+    "name": "Digitalni ortofoto u mjerilu 1:1000 potres Grad Zagreb - WMS za registrirane korisnike",
     "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_1000/wms?authKey=12345&service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:1000 potres Grad Zagreb",
     "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-u-mjerilu-1-1000-potres-grad-zagreb"
   },
   {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WFS - WFS",
-    "name": "Biogeografske regije - WFS",
-    "url": "http://services.bioportal.hr/wfs?service=WFS&request=GetCapabilities",
-    "format": "WFS",
-    "dataset": "Biogeografske regije",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/biogeografske-regije"
-  },
-  {
-    "_comment": "Duplikat: Karta staništa Republike Hrvatske 2004 - WMS - WMS",
-    "name": "Biogeografske regije - WMS",
-    "url": "http://services.bioportal.hr/wms?service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Biogeografske regije",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/biogeografske-regije"
-  },
-  {
-    "_comment": "Duplikat: Digitalni ortofoto 2019./20. – WMS za registrirane korisnike",
-    "name": "Digitalni ortofoto 2019./20. – WMS za registrirane korisnike",
-    "url": "https://geoportal.dgu.hr/services/auth/inspire/orthophoto_2019_2020/wms?authKey=12345&service=WMS&request=GetCapabilities",
-    "format": "WMS",
-    "dataset": "Digitalni ortofoto u mjerilu 1:5000 2020. godina",
-    "datasetUrl": "https://data.gov.hr/ckan/hr/dataset/digitalni-ortofoto-2020-godina"
-  },
-  {
-    "name": "Digitalni ortofoto 2020. – WMS INSPIRE",
+    "name": "Digitalni ortofoto 2020. - WMS INSPIRE",
     "url": "https://geoportal.dgu.hr/services/inspire/orthophoto_2020/wms?service=WMS&request=GetCapabilities",
     "format": "WMS",
     "dataset": "Digitalni ortofoto u mjerilu 1:5000 2020. godina",
