@@ -1,9 +1,10 @@
 <script>
+	import { untrack } from 'svelte';
 	import { inspect, legendUrl, rasterSource } from './ogc.js';
 	import { addOverlay, removeOverlay } from './map.js';
 	import { showWfs } from './wfs.js';
 
-	let { map, url, type, title, layers = {}, open = false, onremove } = $props();
+	let { map, url, type, title, layers = {}, open = false, onremove, reset = 0 } = $props();
 	let service = $state(), error = $state(), attempt = $state(0);
 	let on = $state({}), note = $state({}), legend = $state({}); // per layer name: checked, status text, legend image
 	let query = $state('');
@@ -18,6 +19,15 @@
 		raster: ['slika', '<rect x="1" y="1.5" width="10" height="9" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M2 10l3-4 2 2.5 1.5-1.5L10 10Z"/>']
 	};
 	const kindOf = (l) => (layers[l.name]?.heatmap ? 'heatmap' : l.kind);
+
+	// The page's reset button bumps `reset`: turn every layer off and clear the filter.
+	$effect(() => {
+		if (!reset) return;
+		untrack(() => {
+			query = '';
+			for (const name in on) if (on[name]) (on[name] = false), toggle(name);
+		});
+	});
 
 	// GetCapabilities runs only once the group is opened; `attempt` lets a retry re-run it.
 	$effect(() => {
