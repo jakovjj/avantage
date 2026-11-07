@@ -11,6 +11,7 @@
 	let selectedFeature = $state(null);
 	let custom = $state(loadCustom());
 	let url = $state('');
+	let resets = $state(0); // bumped by the reset button, see Source.svelte
 	let cursor = $state(), zoom = $state(); // debug readout
 
 	function selectFeature(feature, sourceId, details) {
@@ -60,14 +61,17 @@
 
 <div class="layout" class:with-details={selectedFeature}>
 	<aside class="sidebar">
-		<h1>Avantage</h1>
+		<header>
+			<h1>Avantage</h1>
+			<button onclick={() => resets++}>Resetiraj</button>
+		</header>
 		<form onsubmit={add}>
 			<input type="url" bind:value={url} placeholder="WMS / WFS / WMTS URL" required />
 			<button>Dodaj</button>
 		</form>
 		{#if map}
-			{#each SOURCES as source}<Source {map} {...source} />{/each}
-			{#each custom as source (source)}<Source {map} {...source} onremove={() => remove(source)} />{/each}
+			{#each SOURCES as source}<Source {map} {...source} reset={resets} />{/each}
+			{#each custom as source (source)}<Source {map} {...source} reset={resets} onremove={() => remove(source)} />{/each}
 		{/if}
 	</aside>
 	<main bind:this={container}></main>
@@ -88,6 +92,7 @@
 	.layout.with-details { grid-template-columns: 320px minmax(0, 1fr) 320px; }
 	.sidebar { overflow-y: auto; padding: 0 16px 16px; border-right: 1px solid #ddd; }
 	.details { overflow-y: auto; min-width: 0; padding: 12px; border-left: 1px solid #ddd; }
+	header { display: flex; justify-content: space-between; align-items: center; }
 	h1 { font-size: 20px; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
 	input { flex: 1; min-width: 0; }
