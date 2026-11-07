@@ -1,12 +1,14 @@
 import { MapLibreMap, NavigationControl, ScaleControl, setWorkerUrl } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import maskUrl from './croatia-mask.json?url';
 
 // MapLibre resolves its worker next to itself, which breaks once Vite bundles it.
 setWorkerUrl(workerUrl);
 
 const COLORS = ['#e6194b', '#4363d8', '#3cb44b', '#f58231', '#911eb4', '#008080', '#f032e6'];
 const SELECTION_SOURCE = 'avantage-selection';
+const MASK_SOURCE = 'avantage-mask';
 let colorIndex = 0;
 const shownIds = new Map(); // GeoJSON overlay id → Set of feature ids currently on the map
 const nonInteractive = new Set();
@@ -21,12 +23,40 @@ const overlayFeature = (map, point) =>
 		map.getSource(f.source)?.type === 'geojson' && !nonInteractive.has(f.source)
 	);
 
+const MAX_BOUNDS = [[11.5, 41.2], [21.4, 47.7]];
+
+/**
+ * Basemap focused on Croatia (OSM boundary, the basemap's own source), applied before the first frame: no tiles
+ * beyond the view limit, outside Croatia only grey land and the sea (the mask covers everything but the water polygons
+ * lifted above it), and labels only inside Croatia.
+ */
+function croatiaStyle(style, mask) {
+	const croatia = { type: 'MultiPolygon', coordinates: mask.coordinates.slice(1).map((ring) => [ring]) };
+	for (const source of Object.values(style.sources)) if (source.type === 'vector') source.bounds = MAX_BOUNDS.flat();
+	style.sources[MASK_SOURCE] = { type: 'geojson', data: mask };
+	nonInteractive.add(MASK_SOURCE);
+	const labels = style.layers.filter((l) => l.type === 'symbol');
+	for (const l of labels) l.filter = l.filter ? ['all', l.filter, ['within', croatia]] : ['within', croatia];
+	style.layers = [
+		...style.layers.filter((l) => l.type !== 'symbol' && l.id !== 'water'),
+		{ id: `${MASK_SOURCE}:fill`, type: 'fill', source: MASK_SOURCE, paint: { 'fill-color': '#e4e4e4' } },
+		...style.layers.filter((l) => l.id === 'water'),
+		{ id: `${MASK_SOURCE}:line`, type: 'line', source: MASK_SOURCE, paint: { 'line-color': '#999', 'line-width': 1 } },
+		...labels
+	];
+	return style;
+}
+
 /** Resolves with a map of Croatia once its style has loaded. */
-export function createMap (container, onFeatureSelect = () => {}) {
+export async function createMap (container, onFeatureSelect = () => {}) {
+	const [style, mask] = await Promise.all(
+		['https://tiles.openfreemap.org/styles/positron', maskUrl].map((url) => fetch(url).then((r) => r.json()))
+	);
 	const map = new MapLibreMap({
 		container,
-		style: 'https://tiles.openfreemap.org/styles/positron',
-		bounds: [[13.2, 42.2], [19.7, 46.7]]
+		style: croatiaStyle(style, mask),
+		bounds: [[13.2, 42.2], [19.7, 46.7]],
+		maxBounds: MAX_BOUNDS // all data is Croatian: keep the view close to it
 	});
 	map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right'); // top-right holds the debug readout
 	map.addControl(new ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
@@ -84,9 +114,13 @@ export function viewBbox (map, scale = 1) {
 /** Adds a raster or GeoJSON source with optional per-layer display tweaks. */
 export function addOverlay (map, id, source, layer = {}) {
 	map.addSource(id, source);
-	if (source.type === 'raster') return map.addLayer({ id, type: 'raster', source: id });
+	// Rasters cover the whole view, so they go under the basemap labels and stay a bit see-through.
+	if (source.type === 'raster')
+		return map.addLayer(
+			{ id, type: 'raster', source: id, paint: { 'raster-opacity': 0.8 } },
+			map.getStyle().layers.find((l) => l.type === 'symbol')?.id
+		);
 	if (layer.details) overlayDetails.set(id, layer.details);
-	if (layer.interactive === false) nonInteractive.add(id);
 	const color = COLORS[colorIndex++ % COLORS.length];
 	const kinds = {
 		fill: [isGeom('Polygon'), { 'fill-color': color, 'fill-opacity': 0.2 }],

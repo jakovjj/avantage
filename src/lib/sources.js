@@ -4,7 +4,7 @@
 //   paint        MapLibre paint overrides per kind: { fill, line, circle }
 //   group        optional group title to group layers in the sidebar
 //   minZoom      minimum map zoom for displaying the layer and requesting its WFS features
-//   interactive  false to ignore clicks and pointer changes on the layer
+//   heatmap      WMS URL: draw the layer as the server's own rendered image (for raster-like grids too big for WFS)
 
 // Habitat class colours by NKS top level (A–K), from the `nks1_style` property.
 const NKS_COLOR = ['match', ['get', 'nks1_style'],
@@ -22,17 +22,8 @@ const NKS_COLOR = ['match', ['get', 'nks1_style'],
 	'#999'
 ];
 
-const SENSITIVITY = {
-	minZoom: 14,
-	interactive: false,
-	paint: {
-		fill: {
-			'fill-color': ['match', ['get', 'dn'], 1, '#1a9850', 2, '#91cf60', 3, '#ffffbf', 4, '#fc8d59', 5, '#d73027', '#999'],
-			'fill-opacity': 0.65
-		},
-		line: { 'line-width': 0 }
-	}
-};
+// Sensitivity grids come as a few huge dissolved polygons (one is ~6 MB), so WFS can't show them at any zoom.
+const HEATMAP = { heatmap: 'https://services.bioportal.hr/wms' };
 
 const PERISKE_DETAILS = {
 	fields: [
@@ -123,14 +114,17 @@ export default [
 				details: HABITAT_2016_DETAILS,
 				paint: { fill: { 'fill-color': NKS_COLOR, 'fill-opacity': 0.5 }, line: { 'line-color': NKS_COLOR, 'line-width': 0.5 } }
 			},
-			'dzzpnpis:ascii_osjetljivost_ptice_solar': { ...SENSITIVITY },
-			'dzzpnpis:ascii_osjetljivost_ptice_vjetar': { ...SENSITIVITY },
-			'dzzpnpis:ascii_osjetljivost_vrsta_solar': { ...SENSITIVITY },
-			'dzzpnpis:ascii_osjetljivost_vrsta_vjetar': { ...SENSITIVITY },
-			'dzzpnpis:ascii_osjetljivost_velike_zvijeri_solar': { ...SENSITIVITY },
-			'dzzpnpis:ascii_osjetljivost_velike_zvijeri_vjetar': { ...SENSITIVITY },
-			'dzzpnpis:ascii_osjetljivost_sismisi_solar_import': { ...SENSITIVITY },
-			'dzzpnpis:ascii_osjetljivost_sismisi_vjetar': { ...SENSITIVITY },
+			'dzzpnpis:ascii_osjetljivost_ptice_solar': HEATMAP,
+			'dzzpnpis:ascii_osjetljivost_ptice_vjetar': HEATMAP,
+			'dzzpnpis:ascii_osjetljivost_vrsta_solar': HEATMAP,
+			'dzzpnpis:ascii_osjetljivost_vrsta_vjetar': HEATMAP,
+			'dzzpnpis:ascii_osjetljivost_velike_zvijeri_solar': HEATMAP,
+			'dzzpnpis:ascii_osjetljivost_velike_zvijeri_vjetar': HEATMAP,
+			'dzzpnpis:ascii_osjetljivost_sismisi_solar_import': HEATMAP,
+			'dzzpnpis:ascii_osjetljivost_sismisi_vjetar': HEATMAP,
+			'dzzpnpis:osjetljivost_stanista': HEATMAP,
+			'dzzpnpis:ocjena_priroda_solar': HEATMAP,
+			'dzzpnpis:ocjena_priroda_vjetar': HEATMAP,
 			'dzzpnpis:poucna_info_ploca': { id: (f) => f.properties.poucna_info_ploca_id },
 			'dzzpnpis:poucna_staza': { id: (f) => f.properties.poucna_staza_id },
 			'dzzpnpis:prijedlog_podrucja_obnove_grupa_1': { group: 'Loše stanje stanišnih tipova' },
