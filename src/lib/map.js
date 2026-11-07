@@ -10,6 +10,7 @@ const SELECTION_SOURCE = 'avantage-selection';
 let colorIndex = 0;
 const shownIds = new Map(); // GeoJSON overlay id → Set of feature ids currently on the map
 const nonInteractive = new Set();
+const overlayDetails = new Map();
 let activeSelection; // { sourceId, onFeatureSelect }
 
 const isGeom = (t) => ['in', ['geometry-type'], ['literal', [t, `Multi${t}`]]];
@@ -34,7 +35,7 @@ export function createMap (container, onFeatureSelect = () => {}) {
 		if (!f) return;
 		showSelection(map, f);
 		activeSelection = { sourceId: f.source, onFeatureSelect };
-		onFeatureSelect(f, f.source);
+		onFeatureSelect(f, f.source, overlayDetails.get(f.source));
 	});
 	map.on('mousemove', (e) => (map.getCanvas().style.cursor = overlayFeature(map, e.point) ? 'pointer' : ''));
 	return new Promise((resolve) => map.once('load', () => resolve(map)));
@@ -84,6 +85,7 @@ export function viewBbox (map, scale = 1) {
 export function addOverlay (map, id, source, layer = {}) {
 	map.addSource(id, source);
 	if (source.type === 'raster') return map.addLayer({ id, type: 'raster', source: id });
+	if (layer.details) overlayDetails.set(id, layer.details);
 	if (layer.interactive === false) nonInteractive.add(id);
 	const color = COLORS[colorIndex++ % COLORS.length];
 	const kinds = {
@@ -116,4 +118,5 @@ export function removeOverlay (map, id) {
 	map.removeSource(id);
 	shownIds.delete(id);
 	nonInteractive.delete(id);
+	overlayDetails.delete(id);
 }

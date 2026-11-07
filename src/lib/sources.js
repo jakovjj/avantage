@@ -34,6 +34,67 @@ const SENSITIVITY = {
 	}
 };
 
+const PERISKE_DETAILS = {
+	fields: [
+		{ keys: ['dat_opaza', 'dat_op'], label: 'Datum opažanja' },
+		{ keys: ['god_op'], label: 'Godina opažanja' },
+		{ keys: ['lokalitet', 'lokal', 'lok', 'naziv_lok'], label: 'Lokalitet' },
+		{ keys: ['dubina_m', 'dubina'], label: 'Dubina (m)' },
+		{ keys: ['br_jedinki', 'br_jedi', 'br_jed'], label: 'Broj jedinki' },
+		{ keys: ['br_uginul', 'br_ugin', 'br_ugi'], label: 'Broj uginulih' },
+		{ keys: ['dojav_stan', 'stanje'], label: 'Stanje' },
+		{ keys: ['prov_stanj', 'provjera', 'provjer'], label: 'Provjera stanja' },
+		{ keys: ['napomena'], label: 'Napomena' },
+		{ keys: ['referenca'], label: 'Izvor' }
+	]
+};
+
+const BEETLE_DETAILS = {
+	fields: [
+		{ keys: ['validno_im', 'val_im', 'val_ime'], label: 'Vrsta' },
+		{ keys: ['dat_doj', 'dat_obj'], label: 'Datum dojave' },
+		{ keys: ['god_doj'], label: 'Godina dojave' },
+		{ keys: ['dat_op'], label: 'Datum opažanja' },
+		{ keys: ['dat_nal'], label: 'Datum nalaza' },
+		{ keys: ['vrije_pron', 'vrij_pr', 'vri_pro', 'vri_pron'], label: 'Vrijeme nalaza' },
+		{ keys: ['lok', 'lokal'], label: 'Lokalitet' },
+		{ keys: ['opis_lok'], label: 'Opis lokacije' },
+		{ keys: ['spol'], label: 'Spol' },
+		{ keys: ['br_jed', 'br_jedi'], label: 'Broj jedinki' },
+		{ keys: ['foto'], label: 'Fotografija' }
+	]
+};
+
+const PROTECTED_AREA_DETAILS = {
+	fields: [
+		{ keys: ['naziv_akt', 'naziv'], label: 'Naziv' },
+		{ keys: ['kategorija_zastite'], label: 'Kategorija zaštite' },
+		{ keys: ['podkategorija_zastite'], label: 'Podkategorija zaštite' },
+		{ keys: ['medjunarodni_status'], label: 'Međunarodni status' },
+		{ keys: ['datum_proglasenja'], label: 'Datum proglašenja' },
+		{ keys: ['povrsina'], label: 'Površina' }
+	]
+};
+
+const HABITAT_2004_DETAILS = {
+	fields: [
+		{ keys: ['nks_ime'], label: 'Stanišni tip' },
+		{ keys: ['nks_kod'], label: 'NKS šifra' }
+	]
+};
+
+const HABITAT_2016_DETAILS = {
+	fields: [
+		{ keys: ['nks1'], label: 'NKS 1 šifra' },
+		{ keys: ['nks1_naziv'], label: 'NKS 1' },
+		{ keys: ['nks2'], label: 'NKS 2 šifra' },
+		{ keys: ['nks2_naziv'], label: 'NKS 2' },
+		{ keys: ['nks3'], label: 'NKS 3 šifra' },
+		{ keys: ['nks3_naziv'], label: 'NKS 3' },
+		{ keys: ['area_ha'], label: 'Površina (ha)' }
+	]
+};
+
 export default [
 	{ title: 'Otpad (AZO)', type: 'WMS', url: 'https://servisi.azo.hr/otpad/wms?request=GetCapabilities' },
 	{ title: 'Otpad – objekti (AZO)', type: 'WFS', url: 'https://servisi.azo.hr/otpad/wfs' },
@@ -42,6 +103,26 @@ export default [
 		type: 'WFS',
 		url: 'https://services.bioportal.hr/wfs',
 		layers: {
+			'dzzpnpis:periska_dojave_gradana_2019': { details: PERISKE_DETAILS },
+			'dzzpnpis:periska_dojave_gradana_2020': { details: PERISKE_DETAILS },
+			'dzzpnpis:periske_dojave_gradana_2021': { details: PERISKE_DETAILS },
+			'dzzpnpis:periske_dojave_gradana_2022': { details: PERISKE_DETAILS },
+			'dzzpnpis:periske_dojave_gradana_2023': { details: PERISKE_DETAILS },
+			'dzzpnpis:periske_dojave_gradana_2024': { details: PERISKE_DETAILS },
+			'dzzpnpis:periske_dojave_strucnjaka': { details: PERISKE_DETAILS },
+			'dzzpnpis:periska_arhivski_podaci': { details: PERISKE_DETAILS },
+			'dzzpnpis:saproksilni_kornjasi_dojave_2015': { details: BEETLE_DETAILS },
+			'dzzpnpis:saproksilni_kornjasi_dojave_2016': { details: BEETLE_DETAILS },
+			'dzzpnpis:saproksilni_kornjasi_dojave_2017': { details: BEETLE_DETAILS },
+			'dzzpnpis:saproksilni_kornjasi_dojave_2018': { details: BEETLE_DETAILS },
+			'dzzpnpis:saproksilni_kornjasi_dojave_2019': { details: BEETLE_DETAILS },
+			'dzzpnpis:zasticeno_podrucje_poligoni': { details: PROTECTED_AREA_DETAILS },
+			'dzzpnpis:zasticeno_podrucje_tocke': { details: PROTECTED_AREA_DETAILS },
+			'dzzpnpis:kopnena_stanista': { details: HABITAT_2004_DETAILS },
+			'dzzpnpis:kopnena_stanista_2016': {
+				details: HABITAT_2016_DETAILS,
+				paint: { fill: { 'fill-color': NKS_COLOR, 'fill-opacity': 0.5 }, line: { 'line-color': NKS_COLOR, 'line-width': 0.5 } }
+			},
 			'dzzpnpis:ascii_osjetljivost_ptice_solar': { ...SENSITIVITY },
 			'dzzpnpis:ascii_osjetljivost_ptice_vjetar': { ...SENSITIVITY },
 			'dzzpnpis:ascii_osjetljivost_vrsta_solar': { ...SENSITIVITY },
@@ -50,9 +131,6 @@ export default [
 			'dzzpnpis:ascii_osjetljivost_velike_zvijeri_vjetar': { ...SENSITIVITY },
 			'dzzpnpis:ascii_osjetljivost_sismisi_solar_import': { ...SENSITIVITY },
 			'dzzpnpis:ascii_osjetljivost_sismisi_vjetar': { ...SENSITIVITY },
-			'dzzpnpis:kopnena_stanista_2016': {
-				paint: { fill: { 'fill-color': NKS_COLOR, 'fill-opacity': 0.5 }, line: { 'line-color': NKS_COLOR, 'line-width': 0.5 } }
-			},
 			'dzzpnpis:poucna_info_ploca': { id: (f) => f.properties.poucna_info_ploca_id },
 			'dzzpnpis:poucna_staza': { id: (f) => f.properties.poucna_staza_id },
 			'dzzpnpis:prijedlog_podrucja_obnove_grupa_1': { group: 'Loše stanje stanišnih tipova' },

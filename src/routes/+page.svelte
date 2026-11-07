@@ -13,8 +13,8 @@
 	let url = $state('');
 	let cursor = $state(), zoom = $state(); // debug readout
 
-	function selectFeature(feature, sourceId) {
-		selectedFeature = feature ? { feature, sourceId } : null;
+	function selectFeature(feature, sourceId, details) {
+		selectedFeature = feature ? { feature, sourceId, details } : null;
 	}
 
 	// Custom services are a per-user convenience; storage may be unavailable.
@@ -74,7 +74,7 @@
 	{#if selectedFeature}
 		<aside class="details">
 			<button class="close" aria-label="Zatvori" onclick={() => clearSelection(map)}>✕</button>
-			{@html propsTable(selectedFeature.feature.properties)}
+			{@html propsTable(selectedFeature.feature.properties, selectedFeature.details)}
 		</aside>
 	{/if}
 </div>
