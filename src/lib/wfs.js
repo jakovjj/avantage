@@ -14,9 +14,10 @@ const wholeLayers = new Map(); // overlay id → all features of a small layer, 
  * `layer` holds optional per-layer tweaks from sources.js; `onNote` receives short status text.
  */
 export function showWfs(map, id, service, name, layer = {}, onNote) {
-	addOverlay(map, id, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: attribution(service) }, layer.paint);
+	addOverlay(map, id, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: attribution(service) }, layer);
 	const show = (features) => syncFeatures(map, id, layer.id ? features.map((f) => ({ ...f, id: layer.id(f) })) : features);
-	let request, covered; // covered: area of the last complete response
+	let request, covered, started = false, isBig = false; // covered: area of the last complete response
+	const zoomAllowed = () => !Number.isFinite(layer.minZoom) || map.getZoom() >= layer.minZoom;
 
 	const run = async (task) => {
 		request?.abort();
@@ -25,11 +26,14 @@ export function showWfs(map, id, service, name, layer = {}, onNote) {
 		try {
 			onNote(await task(request.signal));
 		} catch (e) {
-			if (e.name !== 'AbortError') onNote(e.message);
+			if (e.name === 'AbortError') {
+				if (!isBig) started = false;
+			} else onNote(e.message);
 		}
 	};
 
 	const loadView = async (signal) => {
+		if (!zoomAllowed()) return 'približi kartu';
 		const bbox = viewBbox(map, VIEW_SCALE);
 		const features = await getFeatures(service, name, { bbox, maxBytes: VIEW_BYTES, signal });
 		if (!features) return 'previše podataka, približi kartu';
@@ -37,20 +41,35 @@ export function showWfs(map, id, service, name, layer = {}, onNote) {
 		covered = features.length < MAX_FEATURES ? bbox : null;
 		return covered ? features.length : `${MAX_FEATURES}+, približi kartu`;
 	};
-	const followView = () => {
-		if (!covered || !bboxContains(covered, viewBbox(map))) run(loadView);
-	};
-
-	run(async (signal) => {
-		if (!wholeLayers.has(id)) wholeLayers.set(id, await getFeatures(service, name, { maxBytes: SMALL_BYTES, signal }));
-		const all = wholeLayers.get(id);
-		if (!all) {
-			map.on('moveend', followView);
-			return loadView(signal);
+	const start = () => {
+		if (!zoomAllowed()) {
+			onNote('približi kartu');
+			return;
 		}
-		show(all);
-		return all.length;
-	});
+		if (started) return;
+		started = true;
+		run(async (signal) => {
+			if (!wholeLayers.has(id)) wholeLayers.set(id, await getFeatures(service, name, { maxBytes: SMALL_BYTES, signal }));
+			const all = wholeLayers.get(id);
+			if (!all) {
+				isBig = true;
+				return loadView(signal);
+			}
+			show(all);
+			return all.length;
+		});
+	};
+	const followView = () => {
+		if (!zoomAllowed()) {
+			request?.abort();
+			onNote('približi kartu');
+			return;
+		}
+		if (!started) return start();
+		if (isBig && (!covered || !bboxContains(covered, viewBbox(map)))) run(loadView);
+	};
+	map.on('moveend', followView);
+	start();
 
 	return () => {
 		request?.abort();

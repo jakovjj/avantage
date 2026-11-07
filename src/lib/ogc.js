@@ -3,6 +3,8 @@ import { WfsEndpoint, WmsEndpoint, WmtsEndpoint } from '@camptocamp/ogc-client';
 import { escapeHtml, fetchText } from './utils.js';
 
 const ENDPOINTS = { WMS: WmsEndpoint, WFS: WfsEndpoint, WMTS: WmtsEndpoint };
+// WMS servers render each tile on request (~0.3-1 s), so bigger tiles mean 4x fewer requests and a less patchy map.
+const WMS_TILE = 512;
 export const MAX_FEATURES = 5000;
 
 /** Service type from a `service=` param or the URL path, if present. */
@@ -13,10 +15,53 @@ function guessType(url) {
 	return s && s.toUpperCase() in ENDPOINTS ? s.toUpperCase() : null;
 }
 
-function listLayers(type, endpoint) {
-	if (type === 'WFS') return endpoint.getFeatureTypes().map((f) => ({ name: f.name, title: f.title || f.name }));
-	if (type === 'WMTS') return endpoint.getLayers().map((l) => ({ name: l.name, title: l.name }));
-	return endpoint.getFlattenedLayers().filter((l) => l.name).map((l) => ({ name: l.name, title: l.title || l.name }));
+const GEOMETRY_KINDS = [[/Point/, 'points'], [/Curve|LineString/, 'lines'], [/Surface|Polygon/, 'areas']];
+
+/** Geometry kind per WFS feature type name (without namespace), from one DescribeFeatureType for the whole service. */
+async function wfsKinds(url) {
+	try {
+		const u = new URL(url);
+		for (const k of [...u.searchParams.keys()]) if (/^(service|request|version)$/i.test(k)) u.searchParams.delete(k);
+		for (const [k, v] of Object.entries({ service: 'WFS', version: '2.0.0', request: 'DescribeFeatureType' })) u.searchParams.set(k, v);
+		const xsd = await fetchText(u.href);
+		const typeKinds = {};
+		for (const [, type, body] of xsd.matchAll(/<(?:\w+:)?complexType name="([^"]+)"([\s\S]*?)<\/(?:\w+:)?complexType>/g)) {
+			const geom = body.match(/gml:(\w+)PropertyType/)?.[1] ?? '';
+			typeKinds[type] = kindOfGeometry(geom);
+		}
+		const kinds = {};
+		for (const [tag] of xsd.matchAll(/<(?:\w+:)?element [^>]*substitutionGroup[^>]*>/g)) {
+			const name = tag.match(/ name="([^"]+)"/)?.[1], type = tag.match(/ type="(?:[^":]+:)?([^"]+)"/)?.[1];
+			if (name) kinds[name] = typeKinds[type];
+		}
+		return kinds;
+	} catch {
+		return {}; // the symbol is only a hint, so a failed lookup must not break the service
+	}
+}
+
+const kindOfGeometry = (type) => GEOMETRY_KINDS.find(([re]) => re.test(type))?.[1];
+
+/** Fills in kinds the schema leaves generic (gml:GeometryPropertyType) from one sample feature of each such layer. */
+async function sampleKinds(endpoint, kinds) {
+	await Promise.all(endpoint.getFeatureTypes().map(async ({ name }) => {
+		const key = name.split(':').pop();
+		if (kinds[key]) return;
+		try {
+			const text = await fetchText(endpoint.getFeatureUrl(name, { asJson: true, maxFeatures: 1 }), { maxBytes: 500_000 });
+			kinds[key] = text && kindOfGeometry(JSON.parse(text).features?.[0]?.geometry?.type ?? '');
+		} catch {
+			// no symbol for this layer
+		}
+	}));
+	return kinds;
+}
+
+function listLayers(type, endpoint, kinds) {
+	if (type === 'WFS')
+		return endpoint.getFeatureTypes().map((f) => ({ name: f.name, title: f.title || f.name, kind: kinds[f.name.split(':').pop()] }));
+	if (type === 'WMTS') return endpoint.getLayers().map((l) => ({ name: l.name, title: l.name, kind: 'raster' }));
+	return endpoint.getFlattenedLayers().filter((l) => l.name).map((l) => ({ name: l.name, title: l.title || l.name, kind: 'raster' }));
 }
 
 /** Reads GetCapabilities; without a known type, tries each service type in turn. */
@@ -24,9 +69,10 @@ export async function inspect(url, type = guessType(url)) {
 	const errors = [];
 	for (const t of type ? [type] : Object.keys(ENDPOINTS)) {
 		try {
-			const endpoint = await new ENDPOINTS[t](url).isReady();
+			let [endpoint, kinds] = await Promise.all([new ENDPOINTS[t](url).isReady(), t === 'WFS' ? wfsKinds(url) : {}]);
+			if (t === 'WFS') kinds = await sampleKinds(endpoint, kinds);
 			const capabilitiesUrl = endpoint.getCapabilitiesUrl?.() ?? url; // WmtsEndpoint lacks it
-			return { type: t, endpoint, capabilitiesUrl, info: endpoint.getServiceInfo(), layers: listLayers(t, endpoint) };
+			return { type: t, endpoint, capabilitiesUrl, info: endpoint.getServiceInfo(), layers: listLayers(t, endpoint, kinds) };
 		} catch (e) {
 			errors.push(`${t}: ${e.message}`);
 		}
@@ -36,13 +82,13 @@ export async function inspect(url, type = guessType(url)) {
 
 function wmsTiles(endpoint, name) {
 	const url = endpoint.getMapUrl([name], {
-		widthPx: 256, heightPx: 256, crs: 'EPSG:3857', extent: [0, 0, 0, 0], outputFormat: 'image/png'
+		widthPx: WMS_TILE, heightPx: WMS_TILE, crs: 'EPSG:3857', extent: [0, 0, 0, 0], outputFormat: 'image/png'
 	});
 	return url.replace(/BBOX=[^&]*/i, 'BBOX={bbox-epsg-3857}') + '&TRANSPARENT=TRUE';
 }
 
-// OGC scale denominator of a 256 px Web Mercator tile at zoom 0.
-const ZOOM0_SCALE = 559082264.0287178;
+// OGC scale denominator of a Web Mercator WMS tile at zoom 0.
+const ZOOM0_SCALE = 559082264.0287178 * 256 / WMS_TILE;
 
 /** Tile zooms where a WMS layer draws anything, from its declared scale limits. */
 function wmsZooms(endpoint, name) {
@@ -92,11 +138,10 @@ export const attribution = (service) => escapeHtml(providerName(service));
 /** MapLibre tile source for a WMS or WMTS layer. */
 export const rasterSource = (service, name) => ({
 	type: 'raster',
-	tileSize: 256,
 	attribution: attribution(service),
 	...(service.type === 'WMS'
-		? { tiles: [wmsTiles(service.endpoint, name)], ...wmsZooms(service.endpoint, name) }
-		: { tiles: [wmtsTiles(service.endpoint, name)] })
+		? { tileSize: WMS_TILE, tiles: [wmsTiles(service.endpoint, name)], ...wmsZooms(service.endpoint, name) }
+		: { tileSize: 256, tiles: [wmtsTiles(service.endpoint, name)] })
 });
 
 export const legendUrl = ({ type, endpoint }, name) =>
