@@ -13,6 +13,13 @@
 	let url = $state('');
 	let resets = $state(0); // bumped by the reset button, see Source.svelte
 	let cursor = $state(), zoom = $state(); // debug readout
+	let issues = $state([]), activeIssue = $state();
+
+	function reportLimit(issue, id) {
+		issues = issues.filter((item) => item.id !== id);
+		if (issue) issues = [...issues, issue], activeIssue = issue.id;
+		else if (activeIssue === id) activeIssue = issues.at(-1)?.id;
+	}
 
 	function selectFeature(feature, sourceId, details) {
 		selectedFeature = feature ? { feature, sourceId, details } : null;
@@ -70,11 +77,19 @@
 			<button>Dodaj</button>
 		</form>
 		{#if map}
-			{#each SOURCES as source}<Source {map} {...source} reset={resets} />{/each}
-			{#each custom as source (source)}<Source {map} {...source} reset={resets} onremove={() => remove(source)} />{/each}
+			{#each SOURCES as source}<Source {map} {...source} reset={resets} onLimit={reportLimit} />{/each}
+			{#each custom as source (source)}<Source {map} {...source} reset={resets} onLimit={reportLimit} onremove={() => remove(source)} />{/each}
 		{/if}
 	</aside>
-	<main bind:this={container}></main>
+	<main bind:this={container}>
+		{#if issues.find((issue) => issue.id === activeIssue)}
+			{@const issue = issues.find((item) => item.id === activeIssue)}
+			<div class="limit-warning" role="status">
+				<span><strong>{issue.title}</strong>: Ne mogu se učitati svi podaci jer ih je previše. {issue.impossible ? 'Nije moguće učitati cijeli sloj.' : 'Zumirajte.'}</span>
+				{#if !issue.impossible}<button onclick={issue.zoomToFit}>Zumiraj</button>{/if}
+			</div>
+		{/if}
+	</main>
 	{#if selectedFeature}
 		<aside class="details">
 			<button class="close" aria-label="Zatvori" onclick={() => clearSelection(map)}>✕</button>
@@ -96,7 +111,8 @@
 	h1 { font-size: 20px; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
 	input { flex: 1; min-width: 0; }
-	main { min-width: 0; min-height: 0; }
+	main { position: relative; min-width: 0; min-height: 0; }
+	.limit-warning { position: absolute; z-index: 2; top: 8px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100% - 160px); padding: 6px 8px; background: #fff; border: 1px solid #999; }
 	:global(.details table) { width: 100%; border-collapse: collapse; font-size: 12px; }
 	:global(.details th) { text-align: left; color: #666; font-weight: normal; padding: 4px 8px 4px 0; vertical-align: top; }
 	:global(.details td) { padding: 4px 0; overflow-wrap: anywhere; }
