@@ -71,11 +71,12 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 - Features are requested as GeoJSON in EPSG:4326 (`outputCrs`), which MapLibre expects.
 
 **WMS** (`src/lib/ogc.js`)
-- Rendered as 256 px raster tiles in EPSG:3857 using the `{bbox-epsg-3857}` template; the browser and MapLibre
-  cache tiles, so don't replace tiles with a single per-view image.
+- Rendered as 512 px raster tiles (`WMS_TILE`; servers render each tile on request, so fewer bigger tiles load
+  faster) in EPSG:3857 using the `{bbox-epsg-3857}` template; the browser and MapLibre cache tiles, so don't replace
+  tiles with a single per-view image. Rasters sit under the basemap labels at 0.8 opacity.
 - `wmsZooms` turns the layer's `Min/MaxScaleDenominator` into the source's `minzoom`/`maxzoom`, so MapLibre skips
   empty requests and **enlarges the last real tiles** beyond the server's limit (e.g. Hrvatske vode flood maps).
-  Remember: for 256 px tiles, MapLibre requests tile zoom ≈ map zoom + 1.
+  Remember: for 512 px tiles, MapLibre requests tile zoom ≈ map zoom.
 - Show the layer's legend (`legendUrl`) when it is on.
 
 **WMTS**
@@ -86,6 +87,11 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 Keep these to what cannot be inferred automatically. Supported keys:
 - `id(feature)` — stable feature key when the server's ids change between requests.
 - `paint` — MapLibre paint overrides per kind: `{ fill, line, circle }` (e.g. habitat map coloured by NKS class).
+- `group` — sidebar group title when it can't come from the `Group - layer` title prefix.
+- `minZoom` — map zoom below which the layer is neither drawn nor requested.
+- `details` — labelled fields for the right-hand details panel: `{ fields: [{ keys, label }] }`.
+- `heatmap` — WMS URL; the layer is drawn as that server's rendered image instead of WFS features. For grids that
+  are far too big as vectors (Bioportal sensitivity maps are a few dissolved polygons of several MB each).
 
 New tweak types must be generic (applied by `map.js`/`wfs.js`), not special-cased per source in code.
 
@@ -109,6 +115,11 @@ New tweak types must be generic (applied by `map.js`/`wfs.js`), not special-case
 - Sidebar: `Avantage` title, the URL form, then one `<details>` per service. A service links to its
   GetCapabilities document with the text **`<TYPE> endpoint`** (e.g. "WFS endpoint"), nothing more.
 - The data provider (from GetCapabilities) is credited in the MapLibre attribution, not in the sidebar.
+- Each layer row has a small grey icon after its name showing its map type (markers / lines / areas / heatmap / image), derived from
+  the service: one `DescribeFeatureType` per WFS (a sample feature when the schema says only "geometry").
+- The map is limited to Croatia (`maxBounds`). `croatiaStyle` in `map.js` rewrites the basemap style before the first
+  frame: no tiles beyond `maxBounds`, outside Croatia only grey land and the sea (`src/lib/croatia-mask.json`, from
+  the OSM boundary; water is drawn above the mask) and labels only inside Croatia.
 - Debug readout: `lat, lon · z zoom` (two decimals each) in the **top-right** corner of the map. Map controls must
   not cover it.
 - Code, identifiers and comments are **English**. Comments explain *why*, briefly.
