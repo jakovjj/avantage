@@ -1,16 +1,16 @@
-import { MapLibreMap, NavigationControl, Popup, ScaleControl, setWorkerUrl } from 'maplibre-gl';
+import { MapLibreMap, NavigationControl, ScaleControl, setWorkerUrl } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
-import { propsTable } from './utils.js';
 
 // MapLibre resolves its worker next to itself, which breaks once Vite bundles it.
 setWorkerUrl(workerUrl);
 
 const COLORS = ['#e6194b', '#4363d8', '#3cb44b', '#f58231', '#911eb4', '#008080', '#f032e6'];
+const SELECTION_SOURCE = 'avantage-selection';
 let colorIndex = 0;
 const shownIds = new Map(); // GeoJSON overlay id → Set of feature ids currently on the map
 const nonInteractive = new Set();
-let activePopup; // { popup, sourceId }
+let activeSelection; // { sourceId, onFeatureSelect }
 
 const isGeom = (t) => ['in', ['geometry-type'], ['literal', [t, `Multi${t}`]]];
 
@@ -21,7 +21,7 @@ const overlayFeature = (map, point) =>
 	);
 
 /** Resolves with a map of Croatia once its style has loaded. */
-export function createMap (container) {
+export function createMap (container, onFeatureSelect = () => {}) {
 	const map = new MapLibreMap({
 		container,
 		style: 'https://tiles.openfreemap.org/styles/positron',
@@ -32,20 +32,45 @@ export function createMap (container) {
 	map.on('click', (e) => {
 		const f = overlayFeature(map, e.point);
 		if (!f) return;
-		activePopup?.popup.remove();
-		const popup = new Popup({ maxWidth: '360px' })
-			.setLngLat(e.lngLat)
-			.setHTML(propsTable(f.properties))
-			.addTo(map);
-		const content = popup.getElement()?.querySelector('.maplibregl-popup-content');
-		if (content && content.scrollHeight > content.clientHeight) popup.addClassName('has-overflow');
-		activePopup = { popup, sourceId: f.source };
-		popup.on('close', () => {
-			if (activePopup?.popup === popup) activePopup = null;
-		});
+		showSelection(map, f);
+		activeSelection = { sourceId: f.source, onFeatureSelect };
+		onFeatureSelect(f, f.source);
 	});
 	map.on('mousemove', (e) => (map.getCanvas().style.cursor = overlayFeature(map, e.point) ? 'pointer' : ''));
 	return new Promise((resolve) => map.once('load', () => resolve(map)));
+}
+
+function showSelection(map, feature) {
+	const source = map.getSource(SELECTION_SOURCE);
+	const data = {
+		type: 'FeatureCollection',
+		features: [{ type: 'Feature', geometry: feature.geometry, properties: {} }]
+	};
+	if (source) return source.setData(data);
+
+	nonInteractive.add(SELECTION_SOURCE);
+	map.addSource(SELECTION_SOURCE, { type: 'geojson', data });
+	map.addLayer({
+		id: `${SELECTION_SOURCE}:line`, type: 'line', source: SELECTION_SOURCE,
+		filter: ['!', isGeom('Point')], paint: { 'line-color': '#111', 'line-width': 3 }
+	});
+	map.addLayer({
+		id: `${SELECTION_SOURCE}:point`, type: 'circle', source: SELECTION_SOURCE,
+		filter: isGeom('Point'),
+		paint: { 'circle-radius': 9, 'circle-color': '#fff', 'circle-opacity': 0, 'circle-stroke-color': '#111', 'circle-stroke-width': 2 }
+	});
+}
+
+/** Clears the selected feature and its map highlight. */
+export function clearSelection(map) {
+	if (!activeSelection) return;
+	const { onFeatureSelect } = activeSelection;
+	activeSelection = null;
+	for (const id of [`${SELECTION_SOURCE}:line`, `${SELECTION_SOURCE}:point`])
+		if (map.getLayer(id)) map.removeLayer(id);
+	if (map.getSource(SELECTION_SOURCE)) map.removeSource(SELECTION_SOURCE);
+	nonInteractive.delete(SELECTION_SOURCE);
+	onFeatureSelect(null, null);
 }
 
 /** Current view as [w, s, e, n], grown by `scale` around its centre. */
@@ -86,10 +111,7 @@ export function syncFeatures (map, id, features) {
 }
 
 export function removeOverlay (map, id) {
-	if (activePopup?.sourceId === id) {
-		activePopup.popup.remove();
-		activePopup = null;
-	}
+	if (activeSelection?.sourceId === id) clearSelection(map);
 	for (const l of map.getStyle().layers) if (l.source === id) map.removeLayer(l.id);
 	map.removeSource(id);
 	shownIds.delete(id);
