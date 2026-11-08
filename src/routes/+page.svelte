@@ -1,6 +1,6 @@
 <script>
 	import { onMount } from 'svelte';
-	import { clearSelection, createMap } from '#lib/map.js';
+	import { clearSelection, createMap, flyToCoordinates } from '#lib/map.js';
 	import { propsTable, watchDownloads } from '#lib/utils.js';
 	import Source from '#lib/Source.svelte';
 	import SOURCES from '#lib/sources.js';
@@ -16,11 +16,66 @@
 	let filterQuery = $state('');
 	let resets = $state(0); // bumped by the reset button, see Source.svelte
 	let cursor = $state(), zoom = $state(); // debug readout
+	let placeQuery = $state('');
+	let placeResults = $state([]);
+	let showPlaceResults = $state(false);
+	let placeSearchTimer, placeSearchController;
 	let downloads = $state(0), drawing = $state(false); // the loading bar shows while either is busy
 	watchDownloads((n) => (downloads = n));
 
 	function selectFeature(feature, sourceId, layer = {}) {
 		selectedFeature = feature ? { feature, sourceId, layer } : null;
+	}
+
+	function searchPlaces() {
+		clearTimeout(placeSearchTimer);
+		placeSearchController?.abort();
+		placeResults = [];
+		showPlaceResults = false;
+		const query = placeQuery.trim();
+		if (query.length < 2) {
+			return;
+		}
+		placeSearchTimer = setTimeout(async () => {
+			const controller = new AbortController();
+			placeSearchController = controller;
+			const parameters = new URLSearchParams({ q: query, limit: '6', lang: 'default', countrycode: 'HR' });
+			try {
+				const response = await fetch(`https://photon.komoot.io/api/?${parameters}`, { signal: controller.signal });
+				if (!response.ok) throw new Error('Place search failed');
+				const data = await response.json();
+				if (query !== placeQuery.trim()) return;
+				placeResults = data.features.filter((feature) => {
+					const coordinates = feature.geometry?.coordinates;
+					return feature.geometry?.type === 'Point' && Number.isFinite(coordinates?.[0]) && Number.isFinite(coordinates?.[1]);
+				});
+				showPlaceResults = placeResults.length > 0;
+			} catch {
+				if (!controller.signal.aborted) {
+					placeResults = [];
+					showPlaceResults = false;
+				}
+			}
+		}, 400);
+	}
+
+	function selectPlace(feature) {
+		flyToCoordinates(map, feature.geometry.coordinates, feature.properties.extent);
+		placeQuery = feature.properties.name;
+		showPlaceResults = false;
+	}
+
+	function clearPlaceQuery() {
+		placeQuery = '';
+		placeResults = [];
+		showPlaceResults = false;
+		clearTimeout(placeSearchTimer);
+		placeSearchController?.abort();
+	}
+
+	function placeContext(properties) {
+		return [properties.street, properties.district, properties.city, properties.county, properties.state]
+			.find((value) => value && value !== properties.name) ?? properties.country;
 	}
 
 	function googleMapsUrl(feature) {
@@ -53,7 +108,11 @@
 			m.on('mousemove', (e) => (cursor = e.lngLat));
 			return (map = m);
 		});
-		return () => ready.then((m) => m.remove());
+		return () => {
+			clearTimeout(placeSearchTimer);
+			placeSearchController?.abort();
+			ready.then((m) => m.remove());
+		};
 	});
 
 	function add(e) {
@@ -95,7 +154,33 @@
 			{/if}
 		</div>
 	</aside>
-	<main bind:this={container}></main>
+	<main bind:this={container}>
+		<form class="place-search" onsubmit={(event) => { event.preventDefault(); if (placeResults[0]) selectPlace(placeResults[0]); }}>
+			<input
+				aria-label="Pretraži mjesta"
+				aria-expanded={showPlaceResults}
+				aria-controls="place-results"
+				autocomplete="off"
+				placeholder="Pretraži mjesto"
+				bind:value={placeQuery}
+				oninput={searchPlaces}
+				onkeydown={(event) => { if (event.key === 'Escape') showPlaceResults = false; }}
+			/>
+			{#if placeQuery}
+				<button class="clear-place-search" type="button" aria-label="Očisti pretragu" onclick={clearPlaceQuery}>×</button>
+			{/if}
+			{#if showPlaceResults}
+				<div class="place-results" id="place-results">
+					{#each placeResults as result (`${result.properties.osm_type ?? ''}-${result.properties.osm_id ?? ''}`)}
+						<button type="button" onclick={() => selectPlace(result)}>
+							<span>{result.properties.name}</span>
+							{#if placeContext(result.properties)}<small>{placeContext(result.properties)}</small>{/if}
+						</button>
+					{/each}
+				</div>
+			{/if}
+		</form>
+	</main>
 	{#if selectedFeature}
 		{@const { feature, layer } = selectedFeature}
 		<aside class="details">
@@ -134,6 +219,13 @@
 	.active-toggle input { flex: none; }
 	.manual-options { margin-top: auto; }
 	main { position: relative; min-width: 0; min-height: 0; }
+	.place-search { position: absolute; z-index: 3; top: 8px; left: 8px; display: block; width: min(360px, calc(100% - 120px)); margin: 0; }
+	.place-search input { box-sizing: border-box; width: 100%; height: 32px; padding: 4px 30px 4px 8px; background: #fff; }
+	.clear-place-search { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; padding: 0; border: 0; background: #fff; font-size: 16px; line-height: 1; cursor: pointer; }
+	.place-results { position: absolute; top: 34px; left: 0; right: 0; border: 1px solid #aaa; background: #fff; }
+	.place-results button { display: flex; width: 100%; flex-direction: column; align-items: flex-start; gap: 2px; padding: 6px 8px; border: 0; border-bottom: 1px solid #ddd; background: #fff; text-align: left; cursor: pointer; }
+	.place-results button:last-child { border-bottom: 0; }
+	.place-results small { color: #666; }
 	:global(.details table) { width: 100%; border-collapse: collapse; font-size: 12px; }
 	:global(.details th) { text-align: left; color: #666; font-weight: normal; padding: 4px 8px 4px 0; vertical-align: top; }
 	:global(.details td) { padding: 4px 0; overflow-wrap: anywhere; }
