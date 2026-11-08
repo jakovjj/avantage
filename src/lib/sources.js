@@ -13,7 +13,7 @@
 //   snapshot     WFS: URL of a saved GetFeature response (src/lib/snapshots/) used instead of the server; see AGENTS.md
 //   tileSize     WMS tile size in px (default 512)
 //   exclusive    key shared by layers of which only one may be on (turning one on turns the others off)
-//   overview     WMS: { url, bounds: [w, s, e, n], maxZoom } a saved image of the whole layer shown below maxZoom
+//   overview     WMS: { url, bounds: [w, s, e, n], maxZoom } a saved image of the whole layer shown until maxZoom + 0.5
 //                instead of the server's tiles (src/lib/snapshots/); see AGENTS.md
 import OdbaceniOtpad, { STATUS_COLORS } from './panels/OdbaceniOtpad.svelte';
 import Odlagaliste, { MARKERS as LANDFILL_MARKERS } from './panels/Odlagaliste.svelte';
@@ -98,7 +98,7 @@ const NKS_COLOR = ['match', ['get', 'nks1_style'],
 // They cover all of Croatia, so they share one sidebar section and only one is shown at a time.
 const HEATMAP = { heatmap: 'https://services.bioportal.hr/wms', tileSize: 256, group: 'Osjetljivost', exclusive: 'osjetljivost' };
 // The slow ones (all of Croatia at zoom 7 in 256 px tiles: prirode 4.5 s, staništa 3.6 s, šišmiši 2.5 s, skupno
-// 1.9–2.5 s; ptice 1.6 s and velike zvijeri 0.5 s stay live) show a saved image of all of Croatia below zoom 8 (zoom 8
+// 1.9–2.5 s; ptice 1.6 s and velike zvijeri 0.5 s stay live) show a saved image of all of Croatia until zoom 8.5 (zoom 8
 // sharpness, 8–25 s for the server to render) instead of the tiles. See Snapshots in AGENTS.md.
 const OVERVIEW_BOUNDS = [13.4, 42.3, 19.55, 46.6];
 const WITH_OVERVIEW = (url) => ({ ...HEATMAP, overview: { url, bounds: OVERVIEW_BOUNDS, maxZoom: 8 } });

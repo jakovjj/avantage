@@ -113,9 +113,11 @@ Keep these to what cannot be inferred automatically. Supported keys:
   Bioportal sensitivity maps, which cover all of Croatia, share `group: 'Osjetljivost'` and `exclusive`). They keep
   checkboxes, so the active one can still be turned off.
 - `overview` — WMS: `{ url, bounds: [w, s, e, n], maxZoom }`, a saved image of the whole layer (`./snapshots/*.png?url`)
-  shown below `maxZoom` instead of the server's tiles, for layers the server renders very slowly when zoomed out. The
-  tiles' source starts at `maxZoom` (not their layer), so it stays in use and the provider stays credited. See
-  Snapshots.
+  shown until map zoom `maxZoom` + 0.5 instead of the server's tiles, for layers the server renders very slowly when
+  zoomed out. MapLibre picks raster tiles by the rounded zoom (256 px tiles one zoom deeper), so the tiles' source gets
+  the tile minzoom that first appears exactly there (zoom 8 with 256 px tiles → 10). It is set on the source, not its
+  layer, so the source stays in use and the provider stays credited. Check by counting `sourcedata` tile events per
+  zoom; the network panel doesn't show MapLibre's worker requests. See Snapshots.
 
 New tweak types must be generic (applied by `map.js`/`wfs.js`/`Source.svelte`/the page), not special-cased per
 source in code.
