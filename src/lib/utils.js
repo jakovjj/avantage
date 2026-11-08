@@ -1,19 +1,16 @@
 export const escapeHtml = (v) =>
 	String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
-const TECHNICAL_FIELD = /^(?:ogc_fid|gml_id|fid|id_rel|x_(?:htrs|wgs)|y_(?:htrs|wgs)|the_geom|geom(?:etry)?|shape_(?:area|leng)|nesig\w*|.*_style)$/i;
-
-/** HTML table of selected feature properties, using layer labels when provided. */
+/** HTML table of all non-empty feature properties: the layer's labelled fields first, then the rest by key. */
 export const propsTable = (props, details) => {
 	if (!props || typeof props !== 'object') return '<table></table>';
-	const rows = details?.fields
-		? details.fields.map(({ keys, label }) => {
-			const key = keys.find((candidate) => Object.hasOwn(props, candidate) && props[candidate] !== null && props[candidate] !== '');
-			return key ? [label, props[key]] : null;
-		}).filter(Boolean)
-		: Object.entries(props)
-			.filter(([key, value]) => value !== null && value !== '' && !TECHNICAL_FIELD.test(key))
-			.map(([key, value]) => [key.replaceAll('_', ' '), value]);
+	const filled = (key) => Object.hasOwn(props, key) && props[key] !== null && props[key] !== '';
+	const labelled = (details?.fields ?? []).map(({ keys, label }) => [label, keys.find(filled)]).filter(([, key]) => key);
+	const shown = new Set(labelled.map(([, key]) => key));
+	const rows = [
+		...labelled.map(([label, key]) => [label, props[key]]),
+		...Object.keys(props).filter((key) => filled(key) && !shown.has(key)).map((key) => [key.replaceAll('_', ' '), props[key]])
+	];
 	return `<table>${rows
 		.map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
 		.join('')}</table>`;
