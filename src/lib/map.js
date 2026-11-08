@@ -2,7 +2,7 @@ import { MapLibreMap, NavigationControl, ScaleControl, setWorkerUrl } from 'mapl
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import maskUrl from './croatia-mask.json?url';
-import { simplify } from './utils.js';
+import { simplify, track } from './utils.js';
 
 // MapLibre resolves its worker next to itself, which breaks once Vite bundles it.
 setWorkerUrl(workerUrl);
@@ -79,10 +79,14 @@ function croatiaStyle(style, mask) {
 	return style;
 }
 
-/** Resolves with a map of Croatia once its style has loaded. */
-export async function createMap (container, onFeatureSelect = () => {}) {
+/**
+ * Resolves with a map of Croatia once its style has loaded. `onLoading(busy)` hears when image tiles of an overlay
+ * (WMS/WMTS) start loading and when the map has finished. Basemap tiles are quick and GeoJSON is already downloaded
+ * (re-tiling it on every pan is local), so neither counts.
+ */
+export async function createMap (container, onFeatureSelect = () => {}, onLoading = () => {}) {
 	const [style, mask] = await Promise.all(
-		['https://tiles.openfreemap.org/styles/positron', maskUrl].map((url) => fetch(url).then((r) => r.json()))
+		['https://tiles.openfreemap.org/styles/positron', maskUrl].map((url) => track(fetch(url).then((r) => r.json())))
 	);
 	const map = new MapLibreMap({
 		container,
@@ -96,33 +100,48 @@ export async function createMap (container, onFeatureSelect = () => {}) {
 		const rendered = overlayFeature(map, e.point);
 		if (!rendered) return;
 		const f = shownFeatures.get(rendered.source)?.get(rendered.id) ?? rendered;
-		showSelection(map, f);
+		showSelection(map, f, rendered);
 		activeSelection = { sourceId: rendered.source, onFeatureSelect };
 		onFeatureSelect(f, rendered.source, overlayLayers.get(rendered.source));
 	});
 	map.on('mousemove', (e) => (map.getCanvas().style.cursor = overlayFeature(map, e.point) ? 'pointer' : ''));
+	map.on('dataloading', (e) => e.sourceId && map.getSource(e.sourceId)?.type === 'raster' && onLoading(true));
+	map.on('idle', () => onLoading(false));
 	return new Promise((resolve) => map.once('load', () => resolve(map)));
 }
 
-function showSelection(map, feature) {
-	const source = map.getSource(SELECTION_SOURCE);
+// The selected feature glows: a soft amber disc under a point's marker, sized to it (circles and icons of any shape
+// and size), and an amber outline over lines and areas.
+const HIGHLIGHT = '#ffb300';
+
+/** Radius in px of a rendered point's marker, from its evaluated circle or icon size. */
+function markerRadius(map, { layer: { type, paint, layout } }) {
+	if (type === 'circle') return paint['circle-radius'] + paint['circle-stroke-width'];
+	const image = type === 'symbol' && layout['icon-image'] && map.getImage(layout['icon-image'].name);
+	return image ? (Math.max(image.data.width, image.data.height) / image.pixelRatio / 2) * layout['icon-size'] : 6;
+}
+
+function showSelection(map, feature, rendered) {
 	const data = {
 		type: 'FeatureCollection',
-		features: [{ type: 'Feature', geometry: feature.geometry, properties: {} }]
+		features: [{ type: 'Feature', geometry: feature.geometry, properties: { radius: markerRadius(map, rendered) + 9 } }]
 	};
-	if (source) return source.setData(data);
-
-	nonInteractive.add(SELECTION_SOURCE);
-	map.addSource(SELECTION_SOURCE, { type: 'geojson', data });
-	map.addLayer({
-		id: `${SELECTION_SOURCE}:line`, type: 'line', source: SELECTION_SOURCE,
-		filter: ['!', isGeom('Point')], paint: { 'line-color': '#111', 'line-width': 3 }
-	});
-	map.addLayer({
-		id: `${SELECTION_SOURCE}:point`, type: 'circle', source: SELECTION_SOURCE,
-		filter: isGeom('Point'),
-		paint: { 'circle-radius': 9, 'circle-color': '#fff', 'circle-opacity': 0, 'circle-stroke-color': '#111', 'circle-stroke-width': 2 }
-	});
+	if (map.getSource(SELECTION_SOURCE)) map.getSource(SELECTION_SOURCE).setData(data);
+	else {
+		nonInteractive.add(SELECTION_SOURCE);
+		map.addSource(SELECTION_SOURCE, { type: 'geojson', data });
+		map.addLayer({
+			id: `${SELECTION_SOURCE}:line`, type: 'line', source: SELECTION_SOURCE,
+			filter: ['!', isGeom('Point')], paint: { 'line-color': HIGHLIGHT, 'line-width': 4, 'line-opacity': 0.9 }
+		});
+		map.addLayer({
+			id: `${SELECTION_SOURCE}:point`, type: 'circle', source: SELECTION_SOURCE,
+			filter: isGeom('Point'),
+			paint: { 'circle-radius': ['get', 'radius'], 'circle-color': HIGHLIGHT, 'circle-opacity': 0.7, 'circle-blur': 0.5 }
+		});
+	}
+	// Right under the selected layer's own drawing, so the marker stays on top of its glow.
+	map.moveLayer(`${SELECTION_SOURCE}:point`, map.getStyle().layers.find((l) => l.source === rendered.source)?.id);
 }
 
 /** Clears the selected feature and its map highlight. */
@@ -165,6 +184,19 @@ export function addOverlay (map, id, source, layer = {}) {
 			id: `${id}:${type}`, source: id, type, filter,
 			...(Number.isFinite(layer.minZoom) && { minzoom: layer.minZoom }),
 			paint: { ...base, ...layer.paint?.[type] }
+		});
+	// Icons and labels on top, for markers circles can't draw. SVGs are drawn at 2× so their edges stay sharp.
+	for (const [name, svg] of Object.entries(layer.images ?? {})) {
+		if (map.hasImage(name)) continue;
+		const image = new Image();
+		image.src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+		image.decode().then(() => map.hasImage(name) || map.addImage(name, image, { pixelRatio: 2 }));
+	}
+	if (layer.symbol)
+		map.addLayer({
+			id: `${id}:symbol`, source: id, type: 'symbol',
+			...(Number.isFinite(layer.minZoom) && { minzoom: layer.minZoom }),
+			layout: layer.symbol.layout, paint: layer.symbol.paint ?? {}
 		});
 }
 

@@ -8,7 +8,12 @@
 //   hide         leave the layer out of the sidebar (e.g. when the same data is shown from another service)
 //   panel        Svelte component for the details panel, given the clicked feature's `properties`
 //   loadAll      WFS: download the whole layer once whatever its size (measured, e.g. 1.35 MB gzipped), never per view
+//   images       { name: SVG markup } icons for `symbol` (drawn at half the SVG's size, for sharp edges)
+//   symbol       { layout, paint } of an extra MapLibre symbol layer on top: icons, labels
+//   snapshot     WFS: URL of a saved GetFeature response (src/lib/snapshots/) used instead of the server; see AGENTS.md
 import OdbaceniOtpad, { STATUS_COLORS } from './panels/OdbaceniOtpad.svelte';
+import Odlagaliste, { MARKERS as LANDFILL_MARKERS } from './panels/Odlagaliste.svelte';
+import odlagalistaSnapshot from './snapshots/v_odlagalista_geom.json?url';
 
 // Ready layers: designed by hand, one by one (own colours and details panel), and listed in AGENTS.md.
 // Lokacije odbačenog otpada (AZO): WFS only, dots coloured like the AZO WMS style.
@@ -27,6 +32,36 @@ const ODBACENI_OTPAD = {
 			'circle-stroke-color': '#000',
 			'circle-stroke-width': 1
 		}
+	}
+};
+
+// Odlagališta otpada (AZO): WFS only, markers and names like the AZO WMS style (a triangle for active landfills,
+// so the markers are icons rather than circles), sized by the deposited amount.
+// Tonnes span 200 … 9.7 million (median 16,000), so size follows the order of magnitude: ≤100 t, 10,000 t, ≥10 Mt.
+// The 16 landfills without an amount keep the WMS size.
+const TONNES = ['to-number', ['get', 'kolicina_odlozenog_otpada'], 0];
+const LANDFILL_SIZE = ['case', ['>', TONNES, 0], ['interpolate', ['linear'], ['log10', TONNES], 2, 0.7, 4, 1, 7, 2.2], 1];
+const ODLAGALISTA = {
+	panel: Odlagaliste,
+	// 317 points, 292 KB of JSON (28 KB gzipped), but the server takes ~11 s to start answering.
+	snapshot: odlagalistaSnapshot,
+	images: Object.fromEntries(Object.entries(LANDFILL_MARKERS).map(([status, svg]) => [`odlagaliste-${status}`, svg])),
+	paint: { circle: { 'circle-radius': 0, 'circle-stroke-width': 0 } }, // the icons replace the default dots
+	symbol: {
+		layout: {
+			'icon-image': ['concat', 'odlagaliste-', ['get', 'status_operativnosti']],
+			'icon-size': LANDFILL_SIZE,
+			'icon-allow-overlap': true,
+			'symbol-sort-key': ['-', TONNES], // big landfills first: drawn under the small ones, named first
+			'text-field': ['get', 'naziv_odlagalista'],
+			'text-font': ['Noto Sans Bold'],
+			'text-size': 11,
+			'text-variable-anchor': ['left'],
+			'text-radial-offset': ['+', 0.4, ['*', 0.65, LANDFILL_SIZE]], // clear of the marker at any size (in ems)
+			'text-max-width': 10,
+			'text-optional': true // a name that collides is dropped, its marker stays
+		},
+		paint: { 'text-color': 'rgba(0, 0, 0, 0.8)', 'text-halo-color': 'rgba(255, 255, 255, 0.7)', 'text-halo-width': 1.5 }
 	}
 };
 
@@ -121,13 +156,13 @@ export default [
 		title: 'Otpad (AZO)',
 		type: 'WMS',
 		url: 'https://servisi.azo.hr/otpad/wms?request=GetCapabilities',
-		layers: { odbaceni_otpad: { hide: true } }
+		layers: { odbaceni_otpad: { hide: true }, v_odlagalista_geom: { hide: true } }
 	},
 	{
 		title: 'Otpad – objekti (AZO)',
 		type: 'WFS',
 		url: 'https://servisi.azo.hr/otpad/wfs',
-		layers: { 'otpad:odbaceni_otpad': ODBACENI_OTPAD }
+		layers: { 'otpad:odbaceni_otpad': ODBACENI_OTPAD, 'otpad:v_odlagalista_geom': ODLAGALISTA }
 	},
 	{
 		title: 'Bioportal',

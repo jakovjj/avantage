@@ -14,7 +14,8 @@ shows the layers on a map in a readable way, and **always says where the data co
    served by nginx in Docker). Do **not** add a backend, API routes, `+server.js`, `+page.server.js`,
    `hooks.server.js`, server-side proxies, or SSR. `src/routes/+layout.js` stays `ssr = false`, `prerender = true`.
 2. **Talk to OGC services directly from the browser.** A service is usable only if it sends CORS headers
-   (`Access-Control-Allow-Origin`). If it doesn't, report that — don't build a proxy around it.
+   (`Access-Control-Allow-Origin`). If it doesn't, report that — don't build a proxy around it. The one exception
+   is a `snapshot`: a saved GetFeature response shipped with the app, only where the user decided so (see Snapshots).
 3. **Minimal codebase.** No new files, helpers, classes, wrappers, abstractions or dependencies unless clearly
    needed. No dead code, no commented-out code, no speculative options. Prefer deleting to adding.
 4. **Separation of concerns** (see the table below). Generic logic goes to `src/lib/utils.js`, never glued into a
@@ -51,9 +52,10 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 | `src/lib/ogc.js` | Everything OGC: GetCapabilities, layer lists, GetMap/GetTile/GetFeature URLs, provider/attribution, legends; returns plain MapLibre source specs | import MapLibre or touch the map |
 | `src/lib/map.js` | Everything MapLibre: create map, add/remove overlays, styling defaults, popups, feature diffing, view bbox | know about OGC |
 | `src/lib/wfs.js` | WFS loading strategy (small vs. big layers), glues `ogc.js` + `map.js` | contain UI |
-| `src/lib/utils.js` | Small domain-free helpers (escaping, bbox math, size-capped fetch) | know about OGC or MapLibre |
+| `src/lib/utils.js` | Small domain-free helpers (escaping, bbox math, size-capped fetch, running-download counter) | know about OGC or MapLibre |
 | `src/lib/Source.svelte` | UI for one service: layer list, toggles, status notes, legend, "`<TYPE>` endpoint" link | fetch data or build map layers itself |
 | `src/lib/panels/*.svelte` | Hand-designed details panel of one ready layer, given the clicked feature's `properties` | fetch data or touch the map |
+| `src/lib/snapshots/*.json` | Saved WFS GetFeature responses for `snapshot` layers, exactly as the server sent them | be edited by hand |
 | `src/routes/+page.svelte` | Page layout, sidebar, "add service" form, map container, debug readout | contain map/OGC logic |
 
 ## Data loading rules (don't break these)
@@ -99,6 +101,11 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `panel` — Svelte component (`src/lib/panels/`) replacing the properties table in the details panel.
 - `loadAll` — WFS only: download the whole layer once, without the 100 KB cap, and never switch to viewport mode.
   Only after measuring that the full download is acceptable (compressed size, time).
+- `images` — `{ name: SVG markup }` icons for `symbol`, drawn at half the SVG's pixel size so their edges stay sharp.
+- `symbol` — `{ layout, paint }` of one extra MapLibre symbol layer on top of the layer's own: icons (markers circles
+  can't draw, e.g. triangles) and labels (`text-font` must be a basemap font: `Noto Sans Regular/Bold/Italic`).
+- `snapshot` — WFS only: URL (`import … from './snapshots/<layer>.json?url'`) of a saved GetFeature response, loaded
+  whole instead of asking the server. For small layers whose server is very slow. See Snapshots.
 
 New tweak types must be generic (applied by `map.js`/`wfs.js`/`Source.svelte`/the page), not special-cased per
 source in code.
@@ -113,6 +120,29 @@ asks; every other layer keeps the automatic defaults. Add a layer here when the 
   (14,195 points, 1.35 MB gzipped). Dots coloured by
   `status_lokacije_otpada` like the AZO WMS style; panel `OdbaceniOtpad.svelte` (status, place, description, waste
   type/amount/area, photo grid with Viewer.js; dot size by kg on a log scale).
+- **Odlagališta otpada** (AZO) — WFS only (`otpad:v_odlagalista_geom`; the WMS layer is hidden), from a `snapshot`
+  (317 points, 28 KB gzipped; the server takes ~11 s to start answering). Markers and names copied from the AZO WMS style via `images` + `symbol`: red triangle for `aktivno`,
+  green circle for `zatvoreno`, cyan circle for `zatvoreno ex-situ` (otpad uklonjen); bold name with a white halo.
+  Marker size by `kolicina_odlozenog_otpada` (tonnes) on a log scale, the biggest drawn underneath. Panel
+  `Odlagaliste.svelte`: name, status with its marker, place, deposited amount, remediation, permit, data year,
+  manager. Of the other fields, the `_tone` breakdowns, `zadnja_izmjena` and `izvjestajno_razdoblje` are empty.
+
+## Snapshots
+
+A snapshot replaces a slow WFS request with a copy of its response in `src/lib/snapshots/`, built into the app and
+served gzipped by nginx. The layer still appears under its service (GetCapabilities and the attribution come from the
+server); only its features come from the file. Snapshots go stale: **refresh them from time to time**, and whenever
+the user asks, by downloading the same request the app would make and replacing the file unchanged:
+
+```bash
+curl -o src/lib/snapshots/v_odlagalista_geom.json "https://servisi.azo.hr/otpad/wfs?SERVICE=WFS&REQUEST=GetFeature&VERSION=2.0.0&TYPENAMES=otpad%3Av_odlagalista_geom&OUTPUTFORMAT=application%2Fjson&SRSNAME=EPSG%3A4326"
+```
+
+The file's `timeStamp` field says when it was taken. Then check the app (markers, details) and commit.
+
+| File | Layer | Taken |
+|---|---|---|
+| `v_odlagalista_geom.json` | AZO Odlagališta otpada | 2026-11-08 |
 
 ## Adding a built-in service
 
@@ -128,19 +158,25 @@ asks; every other layer keeps the automatic defaults. Add a layer here when the 
   deliberately later, by the user — never add them on your own.
 - **Not allowed** in the UI: subtitles/taglines (e.g. "Otvoreni prostorni podaci Hrvatske"), section headings
   (e.g. "Dodaj servis"), hint paragraphs (e.g. "Podržani su WMS, WFS i WMTS…"), footers or credits in the sidebar,
-  logos, counters/badges, spinners, empty-state prose.
+  logos, counters/badges, spinners, empty-state prose. The one loading indicator is the green bar below.
 - **CSS stays small and plain**: native form controls (no custom checkboxes), no rounded corners, no shadows,
   gradients, animations or transitions, no colour themes/variables. A few lines per component is the target.
 - Sidebar: `Avantage` title, the URL form, then one `<details>` per service. A service links to its
   GetCapabilities document with the text **`<TYPE> endpoint`** (e.g. "WFS endpoint"), nothing more.
 - The data provider (from GetCapabilities) is credited in the MapLibre attribution, not in the sidebar.
-- Details panel (right): a ready layer's own `panel`, otherwise the properties table. The "Google Maps" link (points
+- Numbers shown to users go through `formatNumber` (`utils.js`): thousands split by a thin space ("9 700 000"),
+  **never a dot or comma** (they read as decimals); the decimal mark is a comma ("0,3").
+- Details panel (right): a ready layer's own `panel`, otherwise the properties table. A panel starts with a small
+  grey type label (`<h5>`, e.g. "Odlagalište otpada") above its heading, so it's clear what was clicked. The "Google Maps" link (points
   only) is centred and stuck to the bottom of the panel, also while its content scrolls.
 - Each layer row has a small grey icon after its name showing its map type (markers / lines / areas / heatmap / image), derived from
   the service: one `DescribeFeatureType` per WFS (a sample feature when the schema says only "geometry").
 - The map is limited to Croatia (`maxBounds`). `croatiaStyle` in `map.js` rewrites the basemap style before the first
   frame: no tiles beyond `maxBounds`, outside Croatia only grey land and the sea (`src/lib/croatia-mask.json`, from
   the OSM boundary; water is drawn above the mask) and labels only inside Croatia.
+- Loading bar: a thin green (`#4caf50`) block sweeping along the top edge of the page while any download runs
+  (`track` in `utils.js`: WFS, GetCapabilities, the basemap style) or WMS/WMTS tiles load (`onLoading` from `createMap`).
+  Basemap tiles and re-tiling already loaded GeoJSON don't count.
 - Debug readout: `lat, lon · z zoom` (two decimals each) in the **top-right** corner of the map. Map controls must
   not cover it.
 - Code, identifiers and comments are **English**. Comments explain *why*, briefly.

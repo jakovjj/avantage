@@ -4,7 +4,7 @@
 	import { addOverlay, removeOverlay } from './map.js';
 	import { showWfs } from './wfs.js';
 
-	let { map, url, type, title, layers = {}, open = false, onremove, onLimit, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	let { map, url, type, title, layers = {}, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
 	let service = $state(), error = $state(), attempt = $state(0), loading = $state(false);
 	let on = $state({}), note = $state({}), legend = $state({}); // per layer name: checked, status text, legend image
 	let rootOpen = $state(untrack(() => open));
@@ -144,9 +144,7 @@
 		note[name] = '';
 		if (!on[name]) return hide[name]?.();
 		if (service.type === 'WFS' && !layers[name]?.heatmap) {
-			hide[name] = showWfs(map, id, service, name, layers[name], (t) => (note[name] = t), (limited, zoomToFit, impossible = false) =>
-				onLimit?.(limited ? { id, title: service.layers.find((layer) => layer.name === name)?.title ?? name, zoomToFit, impossible } : null, id)
-			);
+			hide[name] = showWfs(map, id, service, name, layers[name], (t) => (note[name] = t));
 			return;
 		}
 		try {

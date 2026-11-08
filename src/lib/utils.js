@@ -1,3 +1,13 @@
+/** "VRSAR - ORSERA" → "Vrsar - Orsera" (for names a server writes in capitals). */
+export const titleCase = (s) =>
+	s.toLocaleLowerCase('hr').replace(/(^|[\s-])(\p{L})/gu, (_, before, letter) => before + letter.toLocaleUpperCase('hr'));
+
+/**
+ * 9700000 → "9 700 000", 0.3 → "0,3": a thin space between thousands, never a dot or comma, which read as decimals.
+ */
+export const formatNumber = (value, maximumFractionDigits = 2) =>
+	Number(value).toLocaleString('hr', { maximumFractionDigits }).replaceAll('.', '\u202f');
+
 export const escapeHtml = (v) =>
 	String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
@@ -33,17 +43,33 @@ export function simplify(points, tolerance) {
 	return [...simplify(points.slice(0, index + 1), tolerance).slice(0, -1), ...simplify(points.slice(index), tolerance)];
 }
 
-/** Response body as text, or null once it grows past maxBytes (the download is then cancelled). */
-export async function fetchText(url, { maxBytes = Infinity, signal } = {}) {
-	const reader = (await fetch(url, { signal })).body.getReader();
-	const chunks = [];
-	let size = 0;
-	for (let chunk; !(chunk = await reader.read()).done; ) {
-		if ((size += chunk.value.length) > maxBytes) {
-			reader.cancel();
-			return null;
-		}
-		chunks.push(chunk.value);
+let downloads = 0, onDownloads = () => {};
+/** `fn(count)` hears how many tracked downloads are running, e.g. for a loading bar. */
+export const watchDownloads = (fn) => (onDownloads = fn);
+
+/** Resolves like `promise`, counted as a running download until it settles. */
+export async function track(promise) {
+	onDownloads(++downloads);
+	try {
+		return await promise;
+	} finally {
+		onDownloads(--downloads);
 	}
-	return new TextDecoder().decode(await new Blob(chunks).arrayBuffer());
+}
+
+/** Response body as text, or null once it grows past maxBytes (the download is then cancelled). */
+export function fetchText(url, { maxBytes = Infinity, signal } = {}) {
+	return track(fetch(url, { signal }).then(async (response) => {
+		const reader = response.body.getReader();
+		const chunks = [];
+		let size = 0;
+		for (let chunk; !(chunk = await reader.read()).done; ) {
+			if ((size += chunk.value.length) > maxBytes) {
+				reader.cancel();
+				return null;
+			}
+			chunks.push(chunk.value);
+		}
+		return new TextDecoder().decode(await new Blob(chunks).arrayBuffer());
+	}));
 }
