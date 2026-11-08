@@ -170,9 +170,9 @@
 		<input type="checkbox" bind:checked={on[l.name]} onchange={() => toggle(l.name)} />
 		<span>
 			{text}
-			{#if icon}<svg viewBox="0 0 12 12" fill="currentColor"><title>{kind}</title>{@html icon}</svg>{/if}
 			<small>{note[l.name] ?? ''}</small>
 		</span>
+		{#if icon}<svg viewBox="0 0 12 12" fill="currentColor"><title>{kind}</title>{@html icon}</svg>{/if}
 	</label>
 	{#if on[l.name] && legend[l.name]}<img src={legend[l.name]} alt="" />{/if}
 {/snippet}
@@ -188,7 +188,7 @@
 	label { display: flex; gap: 6px; align-items: baseline; padding: 3px 0 3px 12px; cursor: pointer; }
 	a, img, small, pre + button { display: block; margin: 0 0 6px 12px; }
 	label small, summary small { display: inline; margin: 0; }
-	svg { width: 14px; height: 14px; margin-left: 3px; vertical-align: -2px; color: #777; }
+	svg { flex: none; align-self: center; width: 14px; height: 14px; margin-left: auto; color: #777; }
 	small, a { color: #666; font-size: 12px; }
 	pre { white-space: pre-wrap; color: #b00; font-size: 12px; }
 </style>
