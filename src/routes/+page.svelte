@@ -124,7 +124,7 @@
 <style>
 	:global(body) { margin: 0; height: 100dvh; font: 14px system-ui, sans-serif; color-scheme: light; background: #fff; color: #222; }
 	.layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: 100%; }
-	.sidebar { display: flex; flex-direction: column; overflow-y: auto; padding: 0 16px 16px; border-right: 1px solid #ddd; }
+	.sidebar { display: flex; flex-direction: column; overflow-y: auto; padding: 0 16px 16px; border-right: 1px solid #ddd; user-select: none; }
 	/* Overlays the map: resizing the map container would move and re-centre the map. */
 	/* border-box: the controls and readout are shifted by exactly this 320px, padding included. */
 	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; box-sizing: border-box; z-index: 10; overflow-y: auto; padding: 12px; border-left: 1px solid #ddd; background: #fff; }
