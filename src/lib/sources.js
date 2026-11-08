@@ -29,12 +29,14 @@ const PERISKE_DETAILS = {
 	fields: [
 		{ keys: ['dat_opaza', 'dat_op'], label: 'Datum opažanja' },
 		{ keys: ['god_op'], label: 'Godina opažanja' },
+		{ keys: ['opazac', 'promat', 'prom'], label: 'Opažač' },
 		{ keys: ['lokalitet', 'lokal', 'lok', 'naziv_lok'], label: 'Lokalitet' },
 		{ keys: ['dubina_m', 'dubina'], label: 'Dubina (m)' },
 		{ keys: ['br_jedinki', 'br_jedi', 'br_jed'], label: 'Broj jedinki' },
 		{ keys: ['br_uginul', 'br_ugin', 'br_ugi'], label: 'Broj uginulih' },
 		{ keys: ['dojav_stan', 'stanje'], label: 'Stanje' },
 		{ keys: ['prov_stanj', 'provjera', 'provjer'], label: 'Provjera stanja' },
+		{ keys: ['nesig_koor', 'nesigurno', 'nesigu', 'nes'], label: 'Nesigurno' },
 		{ keys: ['napomena'], label: 'Napomena' },
 		{ keys: ['referenca'], label: 'Izvor' }
 	]
@@ -43,6 +45,9 @@ const PERISKE_DETAILS = {
 const BEETLE_DETAILS = {
 	fields: [
 		{ keys: ['validno_im', 'val_im', 'val_ime'], label: 'Vrsta' },
+		{ keys: ['ime_op', 'im_op'], label: 'Ime' },
+		{ keys: ['prez_op'], label: 'Prezime' },
+		{ keys: ['im_pre_op'], label: 'Ime i prezime' },
 		{ keys: ['dat_doj', 'dat_obj'], label: 'Datum dojave' },
 		{ keys: ['god_doj'], label: 'Godina dojave' },
 		{ keys: ['dat_op'], label: 'Datum opažanja' },
@@ -52,6 +57,7 @@ const BEETLE_DETAILS = {
 		{ keys: ['opis_lok'], label: 'Opis lokacije' },
 		{ keys: ['spol'], label: 'Spol' },
 		{ keys: ['br_jed', 'br_jedi'], label: 'Broj jedinki' },
+		{ keys: ['nesig', 'nesigur', 'nesigurnos', 'nesigu'], label: 'Nesigurno' },
 		{ keys: ['foto'], label: 'Fotografija' }
 	]
 };

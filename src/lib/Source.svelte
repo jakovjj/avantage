@@ -35,7 +35,14 @@
 		if (open && !service && !error) inspect(url, type).then((s) => (service = s), (e) => (error = e.message));
 	});
 
-	const layerGroup = (l) => layers[l.name]?.group || (l.title.includes(' - ') ? l.title.split(' - ')[0].trim() : null);
+	// Group title prefix ("2018" in "2018 - Reciklažna dvorišta"); some servers write the
+	// dash without the trailing space ("2017 -Građevni otpad") or as an en dash.
+	const titlePrefix = (title) => title.match(/^(.+?)\s+[-–—]\s*/)?.[1] ?? null;
+	const layerGroup = (l) => layers[l.name]?.group || titlePrefix(l.title);
+	const itemLabel = (l, group) => {
+		const match = l.title.match(/^(.+?)\s+[-–—]\s*/);
+		return match?.[1] === group ? l.title.slice(match[0].length) : l.title;
+	};
 
 	const prefixCounts = $derived.by(() => {
 		const counts = {};
@@ -60,7 +67,10 @@
 				ungrouped.push(l);
 			}
 		}
-		return { groups: [...groups.entries()].map(([name, items]) => ({ name, items })), ungrouped };
+		return {
+			groups: [...groups.entries()].map(([name, items]) => ({ name, items })).sort((a, b) => a.name.localeCompare(b.name, 'hr')),
+			ungrouped
+		};
 	});
 
 	function retry() {
@@ -114,7 +124,7 @@
 			<details class="group" open={query ? true : undefined}>
 				<summary>{name} <small>({items.length})</small></summary>
 				{#each items as l (l.name)}
-					{@render row(l, l.title.startsWith(name + ' - ') ? l.title.slice(name.length + 3) : l.title)}
+				{@render row(l, itemLabel(l, name))}
 				{/each}
 			</details>
 		{/each}
