@@ -24,8 +24,8 @@
 		else if (activeIssue === id) activeIssue = issues.at(-1)?.id;
 	}
 
-	function selectFeature(feature, sourceId, details) {
-		selectedFeature = feature ? { feature, sourceId, details } : null;
+	function selectFeature(feature, sourceId, layer = {}) {
+		selectedFeature = feature ? { feature, sourceId, layer } : null;
 	}
 
 	function googleMapsUrl(feature) {
@@ -108,11 +108,14 @@
 		{/if}
 	</main>
 	{#if selectedFeature}
+		{@const { feature, layer } = selectedFeature}
 		<aside class="details">
-			<button class="close" aria-label="Zatvori" onclick={() => clearSelection(map)}>✕</button>
-			{@html propsTable(selectedFeature.feature.properties, selectedFeature.details)}
-			{#if googleMapsUrl(selectedFeature.feature)}
-				<a href={googleMapsUrl(selectedFeature.feature)} target="_blank" rel="noopener noreferrer">Google Maps</a>
+			<div>
+				<button class="close" aria-label="Zatvori" onclick={() => clearSelection(map)}>✕</button>
+				{#if layer.panel}<layer.panel properties={feature.properties} />{:else}{@html propsTable(feature.properties, layer.details)}{/if}
+			</div>
+			{#if googleMapsUrl(feature)}
+				<a class="maps" href={googleMapsUrl(feature)} target="_blank" rel="noopener noreferrer">Google Maps</a>
 			{/if}
 		</aside>
 	{/if}
@@ -127,7 +130,10 @@
 	.sidebar { display: flex; flex-direction: column; overflow-y: auto; padding: 0 16px 16px; border-right: 1px solid #ddd; user-select: none; }
 	/* Overlays the map: resizing the map container would move and re-centre the map. */
 	/* border-box: the controls and readout are shifted by exactly this 320px, padding included. */
-	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; box-sizing: border-box; z-index: 10; overflow-y: auto; padding: 12px; border-left: 1px solid #ddd; background: #fff; }
+	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; box-sizing: border-box; z-index: 10; display: flex; flex-direction: column; overflow-y: auto; padding: 12px 12px 0; border-left: 1px solid #ddd; background: #fff; }
+	/* The content fills the panel, so the link sits at its bottom; when the panel scrolls, the link sticks there. */
+	.details > div { flex: 1 0 auto; padding-bottom: 12px; }
+	.maps { position: sticky; bottom: 0; padding: 10px 0; text-align: center; background: #fff; }
 	header { display: flex; justify-content: space-between; align-items: center; }
 	h1 { font-size: 20px; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }

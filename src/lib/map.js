@@ -17,9 +17,13 @@ const COLORS = [
 ];
 const SELECTION_SOURCE = 'avantage-selection';
 const MASK_SOURCE = 'avantage-mask';
-const shownIds = new Map(); // GeoJSON overlay id → Set of feature ids currently on the map
+// Rendered features keep only numeric ids and geometry rounded to the clicked zoom's tile grid (metres off at low
+// zoom), so each feature gets a numeric id that leads a click back to the feature exactly as it was loaded.
+const shownFeatures = new Map(); // GeoJSON overlay id → Map(numeric id → loaded feature) currently on the map
+const numericIds = new Map(); // feature id → numeric id
+const numericId = (fid) => numericIds.get(fid) ?? numericIds.set(fid, numericIds.size + 1).get(fid);
 const nonInteractive = new Set();
-const overlayDetails = new Map();
+const overlayLayers = new Map(); // overlay id → its per-layer tweaks from sources.js, for the details panel
 let colorIds;
 let colorIndexes;
 let activeSelection; // { sourceId, onFeatureSelect }
@@ -89,11 +93,12 @@ export async function createMap (container, onFeatureSelect = () => {}) {
 	map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right'); // top-right holds the debug readout
 	map.addControl(new ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 	map.on('click', (e) => {
-		const f = overlayFeature(map, e.point);
-		if (!f) return;
+		const rendered = overlayFeature(map, e.point);
+		if (!rendered) return;
+		const f = shownFeatures.get(rendered.source)?.get(rendered.id) ?? rendered;
 		showSelection(map, f);
-		activeSelection = { sourceId: f.source, onFeatureSelect };
-		onFeatureSelect(f, f.source, overlayDetails.get(f.source));
+		activeSelection = { sourceId: rendered.source, onFeatureSelect };
+		onFeatureSelect(f, rendered.source, overlayLayers.get(rendered.source));
 	});
 	map.on('mousemove', (e) => (map.getCanvas().style.cursor = overlayFeature(map, e.point) ? 'pointer' : ''));
 	return new Promise((resolve) => map.once('load', () => resolve(map)));
@@ -148,7 +153,7 @@ export function addOverlay (map, id, source, layer = {}) {
 			{ id, type: 'raster', source: id, paint: { 'raster-opacity': 0.8 } },
 			map.getStyle().layers.find((l) => l.type === 'symbol')?.id
 		);
-	if (layer.details) overlayDetails.set(id, layer.details);
+	overlayLayers.set(id, layer);
 	const { color, dash, markerSize } = overlayStyle(id);
 	const kinds = {
 		fill: [isGeom('Polygon'), { 'fill-color': color, 'fill-opacity': 0.2 }],
@@ -165,20 +170,20 @@ export function addOverlay (map, id, source, layer = {}) {
 
 /** Makes a GeoJSON overlay show exactly `features`, removing and adding only what changed (by feature id). */
 export function syncFeatures (map, id, features) {
-	const shown = shownIds.get(id) ?? new Set();
-	const next = new Set(features.map((f) => f.id));
+	const shown = shownFeatures.get(id) ?? new Map();
+	const next = new Map(features.map((f) => [numericId(f.id), f]));
 	map.getSource(id).updateData({
-		remove: [...shown].filter((fid) => !next.has(fid)),
-		add: features.filter((f) => !shown.has(f.id))
+		remove: [...shown.keys()].filter((n) => !next.has(n)),
+		add: [...next].filter(([n]) => !shown.has(n)).map(([n, f]) => ({ ...f, id: n }))
 	});
-	shownIds.set(id, next);
+	shownFeatures.set(id, next);
 }
 
 export function removeOverlay (map, id) {
 	if (activeSelection?.sourceId === id) clearSelection(map);
 	for (const l of map.getStyle().layers) if (l.source === id) map.removeLayer(l.id);
 	map.removeSource(id);
-	shownIds.delete(id);
+	shownFeatures.delete(id);
 	nonInteractive.delete(id);
-	overlayDetails.delete(id);
+	overlayLayers.delete(id);
 }
