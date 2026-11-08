@@ -14,7 +14,8 @@ const wholeLayers = new Map(); // overlay id → all features of a small layer, 
  * `layer` holds optional per-layer tweaks from sources.js; `onNote` receives short status text.
  */
 export function showWfs(map, id, service, name, layer = {}, onNote) {
-	addOverlay(map, id, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: attribution(service) }, layer);
+	const kind = service.layers.find((l) => l.name === name)?.kind;
+	addOverlay(map, id, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: attribution(service) }, layer, kind);
 	const show = (features) => syncFeatures(map, id, layer.id ? features.map((f) => ({ ...f, id: layer.id(f) })) : features);
 	let request, covered, started = false, isBig = false; // covered: area of the last complete response
 	const zoomAllowed = () => !Number.isFinite(layer.minZoom) || map.getZoom() >= layer.minZoom;

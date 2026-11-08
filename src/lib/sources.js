@@ -20,6 +20,7 @@ import OdbaceniOtpad, { STATUS_COLORS } from './panels/OdbaceniOtpad.svelte';
 import Odlagaliste, { MARKERS as LANDFILL_MARKERS } from './panels/Odlagaliste.svelte';
 import Staniste2016 from './panels/Staniste2016.svelte';
 import Staniste2004 from './panels/Staniste2004.svelte';
+import MorskaStanista2023 from './panels/MorskaStanista2023.svelte';
 import odlagalistaSnapshot from './snapshots/v_odlagalista_geom.json?url';
 import natureSolar from './snapshots/ocjena_priroda_solar.png?url';
 import natureWind from './snapshots/ocjena_priroda_vjetar.png?url';
@@ -29,13 +30,17 @@ import batsWind from './snapshots/ascii_osjetljivost_sismisi_vjetar.png?url';
 import groupSolar from './snapshots/ascii_osjetljivost_vrsta_solar.png?url';
 import groupWind from './snapshots/ascii_osjetljivost_vrsta_vjetar.png?url';
 import habitats2016 from './snapshots/kopnena_stanista_2016.png?url';
+import marinePolygons from './snapshots/morska_stanista_p_1_1.png?url';
+import marinePoints from './snapshots/morska_stanista_pt_1_1.png?url';
 
-// Ready layers: designed by hand, one by one (own colours and details panel), and listed in DEVELOPMENT.md.
+// Ready layers: designed by hand, one by one (own colours and details panel), and listed in DEVELOPMENT.md. Layers marked
+// `ready` are listed on top under their service's `category`; all the others only with "Prikaži sve slojeve".
 // Lokacije odbačenog otpada (AZO): WFS only, dots coloured like the AZO WMS style.
 // Kilograms from "15000.00 kg, 10.00 m3" (null or zero for ~90% of the records).
 const AMOUNT = ['coalesce', ['get', 'ukupna_kolicina_otpada'], ''];
 const KG = ['to-number', ['slice', AMOUNT, 0, ['max', 0, ['index-of', ' kg', AMOUNT]]], 0];
 const ODBACENI_OTPAD = {
+	ready: true,
 	panel: OdbaceniOtpad,
 	loadAll: true, // 14,195 points: 10 MB of JSON, 1.35 MB downloaded (gzip), ~1.5 s; then never refetched
 	paint: {
@@ -57,6 +62,7 @@ const ODBACENI_OTPAD = {
 const TONNES = ['to-number', ['get', 'kolicina_odlozenog_otpada'], 0];
 const LANDFILL_SIZE = ['case', ['>', TONNES, 0], ['interpolate', ['linear'], ['log10', TONNES], 2, 0.7, 4, 1, 7, 2.2], 1];
 const ODLAGALISTA = {
+	ready: true,
 	panel: Odlagaliste,
 	// 317 points, 292 KB of JSON (28 KB gzipped), but the server takes ~11 s to start answering.
 	snapshot: odlagalistaSnapshot,
@@ -86,7 +92,7 @@ const BIOPORTAL_WMS = 'https://services.bioportal.hr/wms';
 // Bioportal renders them slowly when zoomed out (a 512 px tile of Croatia takes ~7 s, a 256 px one ~1.2 s;
 // all of Croatia 6.8 s vs 4.4 s), so they use 256 px tiles.
 // They cover all of Croatia, so they share one sidebar section and only one is shown at a time.
-const HEATMAP = { wms: BIOPORTAL_WMS, heatmap: true, tileSize: 256, group: 'Osjetljivost', exclusive: 'osjetljivost' };
+const HEATMAP = { ready: true, wms: BIOPORTAL_WMS, heatmap: true, tileSize: 256, group: 'Osjetljivost', exclusive: 'osjetljivost' };
 // The slow ones (all of Croatia at zoom 7 in 256 px tiles: prirode 4.5 s, staništa 3.6 s, šišmiši 2.5 s, skupno
 // 1.9–2.5 s; ptice 1.6 s and velike zvijeri 0.5 s stay live) show a saved image of all of Croatia until zoom 8.5 (zoom 8
 // sharpness, 8–25 s for the server to render) instead of the tiles. See Snapshots in DEVELOPMENT.md.
@@ -147,8 +153,13 @@ const PROTECTED_AREA_DETAILS = {
 // Both habitat maps share one sidebar section ("2004 - …", "2016 - …"), and only one of their land polygon layers can be
 // on: they cover the same ground.
 const HABITATS = 'Karta staništa';
-const HABITAT_2004 = { panel: Staniste2004, group: HABITATS };
+const HABITAT_2004 = { ready: true, panel: Staniste2004, group: HABITATS };
 const HABITAT_2004_WMS = { ...HABITAT_2004, wms: BIOPORTAL_WMS, featureInfo: true };
+
+// Karta morskih staništa 2023 (31,993 polygons, 15,455 lines, 62,144 points; 200 polygons ≈ 3 MB as WFS): drawn by
+// the WMS, clicked via GetFeatureInfo (~0.05 s). Polygons and points take ~4 s per 512 px view of Croatia (1.2 s at zoom
+// 8.5, ≤0.4 s from 10), so a saved image until zoom 8.5; lines ≤0.5 s. In the habitat section as "2023 - more - …".
+const MARINE_2023 = { ready: true, panel: MorskaStanista2023, wms: BIOPORTAL_WMS, featureInfo: true, group: HABITATS };
 
 export default [
 	{
@@ -159,12 +170,14 @@ export default [
 	},
 	{
 		title: 'Otpad – objekti (AZO)',
+		category: 'Otpad',
 		type: 'WFS',
 		url: 'https://servisi.azo.hr/otpad/wfs',
 		layers: { 'otpad:odbaceni_otpad': ODBACENI_OTPAD, 'otpad:v_odlagalista_geom': ODLAGALISTA }
 	},
 	{
 		title: 'Bioportal',
+		category: 'Bioportal',
 		type: 'WFS',
 		url: 'https://services.bioportal.hr/wfs',
 		layers: {
@@ -196,10 +209,17 @@ export default [
 			// WMS for the polygon there (~0.3 s). 512 px tiles per view: 4.3 s for Croatia, 2.4 s at zoom 8.5, 1.1 s at 9.5,
 			// ~0.6 s from 10 (256 px is slower from zoom 9), so a saved image until zoom 8.5.
 			'dzzpnpis:kopnena_stanista_2016': {
-				panel: Staniste2016, wms: BIOPORTAL_WMS, featureInfo: true, group: HABITATS, exclusive: 'kopnena staništa',
+				ready: true, panel: Staniste2016, wms: BIOPORTAL_WMS, featureInfo: true, group: HABITATS, exclusive: 'kopnena staništa',
 				overview: { url: habitats2016, bounds: OVERVIEW_BOUNDS, maxZoom: 8 }
 			},
 			'dzzpnpis:kopnena_stanista_tocke_2016': { group: HABITATS },
+			'dzzpnpis:morska_stanista_p_1_1': {
+				...MARINE_2023, label: '2023 - more - poligoni', overview: { url: marinePolygons, bounds: OVERVIEW_BOUNDS, maxZoom: 8 }
+			},
+			'dzzpnpis:morska_stanista_l_1_1': { ...MARINE_2023, label: '2023 - more - linije' },
+			'dzzpnpis:morska_stanista_pt_1_1': {
+				...MARINE_2023, label: '2023 - more - točke', overview: { url: marinePoints, bounds: OVERVIEW_BOUNDS, maxZoom: 8 }
+			},
 			'dzzpnpis:ascii_osjetljivost_ptice_solar': HEATMAP,
 			'dzzpnpis:ascii_osjetljivost_ptice_vjetar': HEATMAP,
 			'dzzpnpis:ascii_osjetljivost_vrsta_solar': WITH_OVERVIEW(groupSolar),
@@ -221,5 +241,16 @@ export default [
 			'dzzpnpis:prijedlog_podrucja_obnove_grupa_6': { group: 'Loše stanje stanišnih tipova' }
 		}
 	},
-	{ title: 'Opasnost od poplava (Hrvatske vode)', type: 'WMS', url: 'https://servisi.voda.hr/poplave_opasnosti/wms' }
+	{
+		title: 'Opasnost od poplava (Hrvatske vode)',
+		category: 'Hrvatske vode',
+		type: 'WMS',
+		url: 'https://servisi.voda.hr/poplave_opasnosti/wms',
+		layers: {
+			'hr.fd.opasnost-od-poplave-mala-vjerojatnost': { ready: true },
+			'hr.fd.opasnost-od-poplave-srednja-vjerojatnost': { ready: true },
+			'hr.fd.opasnost-od-poplave-velika-vjerojatnost': { ready: true },
+			'hr.fd.vjerojatnost-pojavljivanja': { ready: true }
+		}
+	}
 ];

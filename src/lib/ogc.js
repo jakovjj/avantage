@@ -96,8 +96,17 @@ function listLayers(type, endpoint, kinds) {
 	}));
 }
 
-/** Reads GetCapabilities; without a known type, tries each service type in turn. */
-export async function inspect(url, type = guessType(url)) {
+// One read per service: it's listed in two parts of the sidebar, and WMS-drawn WFS layers ask its WMS on every toggle.
+const inspected = new Map();
+
+/** Reads GetCapabilities (once, unless it failed); without a known type, tries each service type in turn. */
+export function inspect(url, type = guessType(url)) {
+	const key = `${type} ${url}`;
+	if (!inspected.has(key)) inspected.set(key, readCapabilities(url, type).catch((e) => (inspected.delete(key), Promise.reject(e))));
+	return inspected.get(key);
+}
+
+async function readCapabilities(url, type) {
 	const errors = [];
 	for (const t of type ? [type] : Object.keys(ENDPOINTS)) {
 		try {
@@ -184,10 +193,14 @@ export async function featureInfo({ endpoint }, name, { bbox, size, i, j, proper
 }
 
 /** MapLibre tiles of one feature of a WMS layer drawn as a `color` outline (GeoServer's FEATUREID and SLD_BODY). */
-export function outlineSource({ endpoint }, name, featureId, color) {
+export function outlineSource({ endpoint }, name, featureId, color, point) {
+	const stroke = `<Stroke><CssParameter name="stroke">${color}</CssParameter><CssParameter name="stroke-width">${point ? 3 : 4}</CssParameter></Stroke>`;
+	// A line style draws nothing for points, so they get a ring (a point style would mark the middle of lines and areas).
+	const symbolizer = point
+		? `<PointSymbolizer><Graphic><Mark><WellKnownName>circle</WellKnownName><Fill><CssParameter name="fill-opacity">0</CssParameter></Fill>${stroke}</Mark><Size>18</Size></Graphic></PointSymbolizer>`
+		: `<LineSymbolizer>${stroke}</LineSymbolizer>`;
 	const sld = `<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer><Name>${escapeHtml(name)}</Name>` +
-		`<UserStyle><FeatureTypeStyle><Rule><LineSymbolizer><Stroke><CssParameter name="stroke">${color}</CssParameter>` +
-		'<CssParameter name="stroke-width">4</CssParameter></Stroke></LineSymbolizer></Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>';
+		`<UserStyle><FeatureTypeStyle><Rule>${symbolizer}</Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
 	const filter = `&FEATUREID=${encodeURIComponent(featureId)}&SLD_BODY=${encodeURIComponent(sld)}`;
 	return { type: 'raster', tileSize: WMS_TILE, tiles: [wmsTiles(endpoint, name, WMS_TILE) + filter] };
 }
