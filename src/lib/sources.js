@@ -5,6 +5,28 @@
 //   group        optional group title to group layers in the sidebar
 //   minZoom      minimum map zoom for displaying the layer and requesting its WFS features
 //   heatmap      WMS URL: draw the layer as the server's own rendered image (for raster-like grids too big for WFS)
+//   hide         leave the layer out of the sidebar (e.g. when the same data is shown from another service)
+//   panel        Svelte component for the details panel, given the clicked feature's `properties`
+import OdbaceniOtpad, { STATUS_COLORS } from './panels/OdbaceniOtpad.svelte';
+
+// Ready layers: designed by hand, one by one (own colours and details panel), and listed in AGENTS.md.
+// Lokacije odbačenog otpada (AZO): WFS only, dots coloured like the AZO WMS style.
+// Kilograms from "15000.00 kg, 10.00 m3" (null or zero for ~90% of the records).
+const AMOUNT = ['coalesce', ['get', 'ukupna_kolicina_otpada'], ''];
+const KG = ['to-number', ['slice', AMOUNT, 0, ['max', 0, ['index-of', ' kg', AMOUNT]]], 0];
+const ODBACENI_OTPAD = {
+	panel: OdbaceniOtpad,
+	paint: {
+		circle: {
+			'circle-color': ['match', ['get', 'status_lokacije_otpada'], ...Object.entries(STATUS_COLORS).flat(), '#999'],
+			// Amounts span 0.5 kg … 19,000 t (median 1 t), so size follows the order of magnitude: ≤10 kg, 1 t, ≥100 t.
+			// Dots without an amount keep the plain size.
+			'circle-radius': ['case', ['>', KG, 0], ['interpolate', ['linear'], ['log10', KG], 1, 3, 3, 6, 5, 11], 5],
+			'circle-stroke-color': '#000',
+			'circle-stroke-width': 1
+		}
+	}
+};
 
 // Habitat class colours by NKS top level (A–K), from the `nks1_style` property.
 const NKS_COLOR = ['match', ['get', 'nks1_style'],
@@ -93,8 +115,18 @@ const HABITAT_2016_DETAILS = {
 };
 
 export default [
-	{ title: 'Otpad (AZO)', type: 'WMS', url: 'https://servisi.azo.hr/otpad/wms?request=GetCapabilities' },
-	{ title: 'Otpad – objekti (AZO)', type: 'WFS', url: 'https://servisi.azo.hr/otpad/wfs' },
+	{
+		title: 'Otpad (AZO)',
+		type: 'WMS',
+		url: 'https://servisi.azo.hr/otpad/wms?request=GetCapabilities',
+		layers: { odbaceni_otpad: { hide: true } }
+	},
+	{
+		title: 'Otpad – objekti (AZO)',
+		type: 'WFS',
+		url: 'https://servisi.azo.hr/otpad/wfs',
+		layers: { 'otpad:odbaceni_otpad': ODBACENI_OTPAD }
+	},
 	{
 		title: 'Bioportal',
 		type: 'WFS',

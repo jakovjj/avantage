@@ -38,6 +38,7 @@ shows the layers on a map in a readable way, and **always says where the data co
 | Language | **JavaScript** (no TypeScript), ES modules | package manager: **npm** |
 | Map | MapLibre GL JS 6 + OpenFreeMap `positron` style | |
 | OGC client | `@camptocamp/ogc-client` | don't write your own capabilities parser |
+| Photo lightbox | Viewer.js 1 | in ready layers' panels: free zoom (GLightbox only zooms to the photo's pixel size); transitions off |
 
 Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` use `#lib/...`
 (defined in `package.json` `imports`).
@@ -52,6 +53,7 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 | `src/lib/wfs.js` | WFS loading strategy (small vs. big layers), glues `ogc.js` + `map.js` | contain UI |
 | `src/lib/utils.js` | Small domain-free helpers (escaping, bbox math, size-capped fetch) | know about OGC or MapLibre |
 | `src/lib/Source.svelte` | UI for one service: layer list, toggles, status notes, legend, "`<TYPE>` endpoint" link | fetch data or build map layers itself |
+| `src/lib/panels/*.svelte` | Hand-designed details panel of one ready layer, given the clicked feature's `properties` | fetch data or touch the map |
 | `src/routes/+page.svelte` | Page layout, sidebar, "add service" form, map container, debug readout | contain map/OGC logic |
 
 ## Data loading rules (don't break these)
@@ -89,11 +91,25 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `paint` — MapLibre paint overrides per kind: `{ fill, line, circle }` (e.g. habitat map coloured by NKS class).
 - `group` — sidebar group title when it can't come from the `Group - layer` title prefix.
 - `minZoom` — map zoom below which the layer is neither drawn nor requested.
-- `details` — labelled fields for the right-hand details panel: `{ fields: [{ keys, label }] }`.
+- `details` — labelled fields shown first in the right-hand details panel: `{ fields: [{ keys, label }] }`; all other
+  non-empty properties follow under their keys.
 - `heatmap` — WMS URL; the layer is drawn as that server's rendered image instead of WFS features. For grids that
   are far too big as vectors (Bioportal sensitivity maps are a few dissolved polygons of several MB each).
+- `hide` — leave the layer out of the sidebar (e.g. its data is shown from another service instead).
+- `panel` — Svelte component (`src/lib/panels/`) replacing the properties table in the details panel.
 
-New tweak types must be generic (applied by `map.js`/`wfs.js`), not special-cased per source in code.
+New tweak types must be generic (applied by `map.js`/`wfs.js`/`Source.svelte`/the page), not special-cased per
+source in code.
+
+## Ready layers
+
+Layers the user has designed by hand, one by one: own colours, own details panel, sometimes shown from one service
+only. Their config sits in the "Ready layers" block at the top of `sources.js`. **Don't change them** unless the user
+asks; every other layer keeps the automatic defaults. Add a layer here when the user says its design is done.
+
+- **Lokacije odbačenog otpada** (AZO) — WFS only (`otpad:odbaceni_otpad`; the WMS layer is hidden). Dots coloured by
+  `status_lokacije_otpada` like the AZO WMS style; panel `OdbaceniOtpad.svelte` (status, place, description, waste
+  type/amount/area, photo grid with Viewer.js; dot size by kg on a log scale).
 
 ## Adding a built-in service
 
@@ -115,6 +131,8 @@ New tweak types must be generic (applied by `map.js`/`wfs.js`), not special-case
 - Sidebar: `Avantage` title, the URL form, then one `<details>` per service. A service links to its
   GetCapabilities document with the text **`<TYPE> endpoint`** (e.g. "WFS endpoint"), nothing more.
 - The data provider (from GetCapabilities) is credited in the MapLibre attribution, not in the sidebar.
+- Details panel (right): a ready layer's own `panel`, otherwise the properties table. The "Google Maps" link (points
+  only) is centred and stuck to the bottom of the panel, also while its content scrolls.
 - Each layer row has a small grey icon after its name showing its map type (markers / lines / areas / heatmap / image), derived from
   the service: one `DescribeFeatureType` per WFS (a sample feature when the schema says only "geometry").
 - The map is limited to Croatia (`maxBounds`). `croatiaStyle` in `map.js` rewrites the basemap style before the first
@@ -123,7 +141,7 @@ New tweak types must be generic (applied by `map.js`/`wfs.js`), not special-case
 - Debug readout: `lat, lon · z zoom` (two decimals each) in the **top-right** corner of the map. Map controls must
   not cover it.
 - Code, identifiers and comments are **English**. Comments explain *why*, briefly.
-- `localStorage` is only for per-user conveniences (e.g. custom services) and every access is wrapped in
+- `localStorage` is only for per-user conveniences (custom services, enabled layers) and every access is wrapped in
   `try/catch`.
 
 ## Known pitfalls

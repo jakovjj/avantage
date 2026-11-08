@@ -31,10 +31,32 @@
 		});
 	});
 
-	// GetCapabilities loads when the service opens or a global search needs its layers.
+	// Enabled layers survive a reload: a per-user convenience, so storage may be unavailable.
+	const STORED = 'avantage.enabledLayers';
+	const storedIds = () => {
+		try {
+			return JSON.parse(localStorage.getItem(STORED) ?? '[]');
+		} catch {
+			return [];
+		}
+	};
+	function store(id, enabled) {
+		try {
+			localStorage.setItem(STORED, JSON.stringify([...storedIds().filter((s) => s !== id), ...(enabled ? [id] : [])]));
+		} catch {}
+	}
+	const restore = untrack(() => storedIds().filter((id) => id.startsWith(`${url}#`)).map((id) => id.slice(url.length + 1)));
+
+	$effect(() => {
+		if (service) untrack(() => {
+			for (const l of listed) if (restore.includes(l.name) && !on[l.name]) (on[l.name] = true), toggle(l.name);
+		});
+	});
+
+	// GetCapabilities loads when the service opens, a global search needs its layers or it has layers to restore.
 	$effect(() => {
 		attempt;
-		if ((rootOpen || filterQuery.trim()) && !service && !error && !loading) {
+		if ((rootOpen || filterQuery.trim() || restore.length) && !service && !error && !loading) {
 			loading = true;
 			inspect(url, type).then(
 				(s) => (service = s, loading = false),
@@ -54,16 +76,18 @@
 		return match?.[1] === group ? l.title.slice(match[0].length) : l.title;
 	};
 
+	const listed = $derived((service?.layers ?? []).filter((l) => !layers[l.name]?.hide));
+
 	const prefixCounts = $derived.by(() => {
 		const counts = {};
-		for (const l of service?.layers ?? []) {
+		for (const l of listed) {
 			const g = layerGroup(l);
 			if (g) counts[g] = (counts[g] || 0) + 1;
 		}
 		return counts;
 	});
 
-	const filtered = $derived((service?.layers ?? []).filter((l) => (!showActiveOnly || on[l.name]) && l.title.toLowerCase().includes(filterQuery.trim().toLowerCase())));
+	const filtered = $derived(listed.filter((l) => (!showActiveOnly || on[l.name]) && l.title.toLowerCase().includes(filterQuery.trim().toLowerCase())));
 
 	const sections = $derived.by(() => {
 		const groups = new Map();
@@ -116,6 +140,7 @@
 
 	async function toggle(name) {
 		const id = `${url}#${name}`;
+		store(id, on[name]);
 		note[name] = '';
 		if (!on[name]) return hide[name]?.();
 		if (service.type === 'WFS' && !layers[name]?.heatmap) {
@@ -133,6 +158,7 @@
 		} catch (e) {
 			note[name] = e.message;
 			on[name] = false;
+			store(id, false);
 		}
 	}
 </script>
