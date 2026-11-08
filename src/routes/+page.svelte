@@ -11,11 +11,28 @@
 	let selectedFeature = $state(null);
 	let custom = $state(loadCustom());
 	let url = $state('');
+	let showAddForm = $state(false);
+	let showActiveOnly = $state(false);
+	let filterQuery = $state('');
 	let resets = $state(0); // bumped by the reset button, see Source.svelte
 	let cursor = $state(), zoom = $state(); // debug readout
+	let issues = $state([]), activeIssue = $state();
+
+	function reportLimit(issue, id) {
+		issues = issues.filter((item) => item.id !== id);
+		if (issue) issues = [...issues, issue], activeIssue = issue.id;
+		else if (activeIssue === id) activeIssue = issues.at(-1)?.id;
+	}
 
 	function selectFeature(feature, sourceId, details) {
 		selectedFeature = feature ? { feature, sourceId, details } : null;
+	}
+
+	function googleMapsUrl(feature) {
+		const coordinates = feature.geometry?.type === 'Point' ? feature.geometry.coordinates : null;
+		if (!coordinates || !Number.isFinite(coordinates[0]) || !Number.isFinite(coordinates[1])) return null;
+		const query = `${coordinates[1]},${coordinates[0]}`;
+		return `https://www.google.com/maps/search/?api=1&${new URLSearchParams({ query })}`;
 	}
 
 	// Custom services are a per-user convenience; storage may be unavailable.
@@ -63,22 +80,40 @@
 	<aside class="sidebar">
 		<header>
 			<h1>Avantage</h1>
-			<button onclick={() => resets++}>Resetiraj</button>
+			<button onclick={() => (resets++, filterQuery = '')}>Resetiraj</button>
 		</header>
-		<form onsubmit={add}>
-			<input type="url" bind:value={url} placeholder="WMS / WFS / WMTS URL" required />
-			<button>Dodaj</button>
-		</form>
+		<label class="active-toggle"><input type="checkbox" bind:checked={showActiveOnly} /> Pokaži aktivne slojeve</label>
+		<input class="layer-filter" type="search" placeholder="Filtriraj slojeve" bind:value={filterQuery} />
 		{#if map}
-			{#each SOURCES as source}<Source {map} {...source} reset={resets} />{/each}
-			{#each custom as source (source)}<Source {map} {...source} reset={resets} onremove={() => remove(source)} />{/each}
+			{#each SOURCES as source}<Source {map} {...source} reset={resets} {showActiveOnly} {filterQuery} onLimit={reportLimit} />{/each}
+			{#each custom as source (source)}<Source {map} {...source} reset={resets} {showActiveOnly} {filterQuery} onLimit={reportLimit} onremove={() => remove(source)} />{/each}
 		{/if}
+		<div class="manual-options">
+			<label class="manual-toggle"><input type="checkbox" bind:checked={showAddForm} /> Dodaj ručno slojeve</label>
+			{#if showAddForm}
+				<form onsubmit={add}>
+					<input type="url" bind:value={url} placeholder="WMS / WFS / WMTS URL" required />
+					<button>Dodaj</button>
+				</form>
+			{/if}
+		</div>
 	</aside>
-	<main bind:this={container}></main>
+	<main bind:this={container}>
+		{#if issues.find((issue) => issue.id === activeIssue)}
+			{@const issue = issues.find((item) => item.id === activeIssue)}
+			<div class="limit-warning" role="status">
+				<span><strong>{issue.title}</strong>: Ne mogu se učitati svi podaci jer ih je previše. {issue.impossible ? 'Nije moguće učitati cijeli sloj.' : 'Zumirajte.'}</span>
+				{#if !issue.impossible}<button onclick={issue.zoomToFit}>Zumiraj</button>{/if}
+			</div>
+		{/if}
+	</main>
 	{#if selectedFeature}
 		<aside class="details">
 			<button class="close" aria-label="Zatvori" onclick={() => clearSelection(map)}>✕</button>
 			{@html propsTable(selectedFeature.feature.properties, selectedFeature.details)}
+			{#if googleMapsUrl(selectedFeature.feature)}
+				<a href={googleMapsUrl(selectedFeature.feature)} target="_blank" rel="noopener noreferrer">Google Maps</a>
+			{/if}
 		</aside>
 	{/if}
 </div>
@@ -89,14 +124,22 @@
 <style>
 	:global(body) { margin: 0; height: 100dvh; font: 14px system-ui, sans-serif; color-scheme: light; background: #fff; color: #222; }
 	.layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: 100%; }
-	.sidebar { overflow-y: auto; padding: 0 16px 16px; border-right: 1px solid #ddd; }
+	.sidebar { display: flex; flex-direction: column; overflow-y: auto; padding: 0 16px 16px; border-right: 1px solid #ddd; }
 	/* Overlays the map: resizing the map container would move and re-centre the map. */
-	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; z-index: 10; overflow-y: auto; padding: 12px; border-left: 1px solid #ddd; background: #fff; }
+	/* border-box: the controls and readout are shifted by exactly this 320px, padding included. */
+	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; box-sizing: border-box; z-index: 10; overflow-y: auto; padding: 12px; border-left: 1px solid #ddd; background: #fff; }
 	header { display: flex; justify-content: space-between; align-items: center; }
 	h1 { font-size: 20px; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
 	input { flex: 1; min-width: 0; }
-	main { min-width: 0; min-height: 0; }
+	.layer-filter { flex: none; height: 1.5em; margin: 0 0 6px; padding-block: 0; }
+	.manual-toggle { display: flex; align-items: center; gap: 6px; margin: 12px 0; }
+	.manual-toggle input { flex: none; }
+	.active-toggle { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; }
+	.active-toggle input { flex: none; }
+	.manual-options { margin-top: auto; }
+	main { position: relative; min-width: 0; min-height: 0; }
+	.limit-warning { position: absolute; z-index: 2; top: 8px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100% - 160px); padding: 6px 8px; background: #fff; border: 1px solid #999; }
 	:global(.details table) { width: 100%; border-collapse: collapse; font-size: 12px; }
 	:global(.details th) { text-align: left; color: #666; font-weight: normal; padding: 4px 8px 4px 0; vertical-align: top; }
 	:global(.details td) { padding: 4px 0; overflow-wrap: anywhere; }
