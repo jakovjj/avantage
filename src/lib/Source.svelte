@@ -8,6 +8,8 @@
 	let service = $state(), error = $state(), attempt = $state(0);
 	let on = $state({}), note = $state({}), legend = $state({}); // per layer name: checked, status text, legend image
 	let query = $state('');
+	let groupOpen = $state({});
+	const active = $derived(Object.values(on).some(Boolean));
 	const hide = {}; // per layer name: removes it from the map
 
 	// Grey icon of what a layer looks like on the map (12×12 SVG content).
@@ -78,6 +80,10 @@
 		};
 	});
 
+	$effect(() => {
+		if (query) for (const { name } of sections.groups) groupOpen[name] = true;
+	});
+
 	function retry() {
 		error = null;
 		attempt++;
@@ -114,7 +120,7 @@
 
 <details bind:open>
 	<summary>
-		{title ?? service?.info.title ?? url} <small>{service?.type ?? type ?? ''}</small>
+		<span class:active>{title ?? service?.info.title ?? url}</span> <small>{service?.type ?? type ?? ''}</small>
 		{#if onremove}<button onclick={(e) => (e.preventDefault(), onremove())} title="Ukloni">✕</button>{/if}
 	</summary>
 	{#if error}
@@ -126,8 +132,8 @@
 		<a href={service.capabilitiesUrl} target="_blank" rel="noreferrer">{service.type} endpoint</a>
 		{#if service.layers.length > 10}<input type="search" placeholder="Filtriraj" bind:value={query} />{/if}
 		{#each sections.groups as { name, items } (name)}
-			<details class="group" open={query ? true : undefined}>
-				<summary>{name} <small>({items.length})</small></summary>
+			<details class="group" bind:open={groupOpen[name]} class:active={items.some((l) => on[l.name])}>
+				<summary><span>{name}</span> <small>({items.length})</small></summary>
 				{#each items as l (l.name)}
 				{@render row(l, itemLabel(l, name))}
 				{/each}
@@ -153,6 +159,9 @@
 <style>
 	summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 	summary button { float: right; }
+	summary span { padding: 2px 4px; }
+	summary span.active { background: #e8eef5; }
+	details.group.active > summary span { background: #eaf2e8; }
 	details.group { margin: 0 0 0 12px; }
 	details.group > summary { font-weight: 500; font-size: 14px; padding: 6px 0; }
 	label { display: flex; gap: 6px; align-items: baseline; padding: 3px 0 3px 12px; cursor: pointer; }
