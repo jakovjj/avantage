@@ -8,6 +8,7 @@
 	import { inspect, legendUrl, rasterSource } from './ogc.js';
 	import { addOverlay, removeOverlay } from './map.js';
 	import { showWfs } from './wfs.js';
+	import { queryOnClick } from './wms.js';
 
 	let { map, url, type, title, layers = {}, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
 	let service = $state(), error = $state(), attempt = $state(0), loading = $state(false);
@@ -150,9 +151,9 @@
 		attempt++;
 	}
 
-	// A heatmap layer is drawn from the WMS that publishes it, possibly without the WFS namespace prefix.
-	async function heatmapSource(name) {
-		const wms = await inspect(layers[name].heatmap, 'WMS');
+	// A WFS layer with a `wms` tweak is drawn from the WMS that publishes it, possibly without the WFS namespace prefix.
+	async function wmsSource(name) {
+		const wms = await inspect(layers[name].wms, 'WMS');
 		return [wms, [name, name.split(':').pop()].find((n) => wms.endpoint.getLayerByName(n)) ?? name];
 	}
 
@@ -164,16 +165,17 @@
 		// Layers sharing an `exclusive` key work like radio buttons: turning one on turns the others off.
 		const set = layers[name]?.exclusive;
 		if (set) for (const other in on) if (other !== name && on[other] && layers[other]?.exclusive === set) (on[other] = false), toggle(other);
-		if (service.type === 'WFS' && !layers[name]?.heatmap) {
+		if (service.type === 'WFS' && !layers[name]?.wms) {
 			hide[name] = showWfs(map, id, service, name, layers[name], (t) => (note[name] = t));
 			return;
 		}
 		try {
-			const [src, layer] = layers[name]?.heatmap ? await heatmapSource(name) : [service, name];
+			const [src, layer] = layers[name]?.wms ? await wmsSource(name) : [service, name];
 			if (!on[name]) return; // turned off while the WMS capabilities were loading
 			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize), layers[name]);
 			legend[name] = legendUrl(src, layer);
-			hide[name] = () => removeOverlay(map, id);
+			const stopQueries = layers[name]?.featureInfo && queryOnClick(map, id, src, layer, service, name);
+			hide[name] = () => (stopQueries?.(), removeOverlay(map, id));
 		} catch (e) {
 			note[name] = e.message;
 			on[name] = false;
