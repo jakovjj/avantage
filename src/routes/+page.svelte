@@ -12,6 +12,7 @@
 	let custom = $state(loadCustom());
 	let url = $state('');
 	let showAddForm = $state(false);
+	let showActiveOnly = $state(false);
 	let resets = $state(0); // bumped by the reset button, see Source.svelte
 	let cursor = $state(), zoom = $state(); // debug readout
 	let issues = $state([]), activeIssue = $state();
@@ -73,9 +74,10 @@
 			<h1>Avantage</h1>
 			<button onclick={() => resets++}>Resetiraj</button>
 		</header>
+		<label class="active-toggle"><input type="checkbox" bind:checked={showActiveOnly} /> Pokaži aktivne slojeve</label>
 		{#if map}
-			{#each SOURCES as source}<Source {map} {...source} reset={resets} onLimit={reportLimit} />{/each}
-			{#each custom as source (source)}<Source {map} {...source} reset={resets} onLimit={reportLimit} onremove={() => remove(source)} />{/each}
+			{#each SOURCES as source}<Source {map} {...source} reset={resets} {showActiveOnly} onLimit={reportLimit} />{/each}
+			{#each custom as source (source)}<Source {map} {...source} reset={resets} {showActiveOnly} onLimit={reportLimit} onremove={() => remove(source)} />{/each}
 		{/if}
 		<div class="manual-options">
 			<label class="manual-toggle"><input type="checkbox" bind:checked={showAddForm} /> Dodaj ručno slojeve</label>
@@ -119,6 +121,8 @@
 	input { flex: 1; min-width: 0; }
 	.manual-toggle { display: flex; align-items: center; gap: 6px; margin: 12px 0; }
 	.manual-toggle input { flex: none; }
+	.active-toggle { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; }
+	.active-toggle input { flex: none; }
 	.manual-options { margin-top: auto; }
 	main { position: relative; min-width: 0; min-height: 0; }
 	.limit-warning { position: absolute; z-index: 2; top: 8px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100% - 160px); padding: 6px 8px; background: #fff; border: 1px solid #999; }

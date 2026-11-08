@@ -4,7 +4,7 @@
 	import { addOverlay, removeOverlay } from './map.js';
 	import { showWfs } from './wfs.js';
 
-	let { map, url, type, title, layers = {}, open = false, onremove, onLimit, reset = 0 } = $props();
+	let { map, url, type, title, layers = {}, open = false, onremove, onLimit, reset = 0, showActiveOnly = false } = $props();
 	let service = $state(), error = $state(), attempt = $state(0);
 	let on = $state({}), note = $state({}), legend = $state({}); // per layer name: checked, status text, legend image
 	let query = $state('');
@@ -57,7 +57,7 @@
 		return counts;
 	});
 
-	const filtered = $derived((service?.layers ?? []).filter((l) => l.title.toLowerCase().includes(query.toLowerCase())));
+	const filtered = $derived((service?.layers ?? []).filter((l) => (!showActiveOnly || on[l.name]) && l.title.toLowerCase().includes(query.toLowerCase())));
 
 	const sections = $derived.by(() => {
 		const groups = new Map();
