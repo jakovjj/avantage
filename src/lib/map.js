@@ -6,16 +6,41 @@ import maskUrl from './croatia-mask.json?url';
 // MapLibre resolves its worker next to itself, which breaks once Vite bundles it.
 setWorkerUrl(workerUrl);
 
-const COLORS = ['#e6194b', '#4363d8', '#3cb44b', '#f58231', '#911eb4', '#008080', '#f032e6'];
+const COLORS = [
+	'#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7',
+	'#9c755f', '#bab0ab', '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',
+	'#800000', '#a50026', '#b2182b', '#d73027', '#e31a1c', '#c51b7d', '#9e0142', '#7f0000',
+	'#f46d43', '#ef6548', '#fc8d59', '#d6604d', '#b35806', '#e08214', '#fdb863', '#fee08b',
+	'#3288bd', '#5e4fa2', '#8073ac', '#542788', '#006d2c', '#238b45', '#41ab5d', '#008080',
+	'#66bd63', '#a6d96a', '#d9ef8b', '#abdda4', '#f1b6da', '#de77ae', '#b2abd2', '#67a9cf'
+];
 const SELECTION_SOURCE = 'avantage-selection';
 const MASK_SOURCE = 'avantage-mask';
-let colorIndex = 0;
 const shownIds = new Map(); // GeoJSON overlay id → Set of feature ids currently on the map
 const nonInteractive = new Set();
 const overlayDetails = new Map();
+let colorIds;
+let colorIndexes;
 let activeSelection; // { sourceId, onFeatureSelect }
 
 const isGeom = (t) => ['in', ['geometry-type'], ['literal', [t, `Multi${t}`]]];
+
+function overlayStyle(id) {
+	if (!colorIds) {
+		colorIds = [];
+		colorIndexes = new Map();
+	}
+	let index = colorIndexes.get(id);
+	if (index === undefined) {
+		index = colorIds.length;
+		colorIds.push(id);
+		colorIndexes.set(id, index);
+	}
+	const overflow = Math.floor(index / COLORS.length);
+	const dashes = [undefined, [2, 1], [1, 1], [4, 2], [1, 2, 4, 1]];
+	const markerSizes = [5, 7, 6, 8, 5];
+	return { color: COLORS[index % COLORS.length], dash: dashes[overflow % dashes.length], markerSize: markerSizes[overflow % markerSizes.length] };
+}
 
 // Only our overlays use GeoJSON sources; the basemap is vector tiles.
 const overlayFeature = (map, point) =>
@@ -121,11 +146,11 @@ export function addOverlay (map, id, source, layer = {}) {
 			map.getStyle().layers.find((l) => l.type === 'symbol')?.id
 		);
 	if (layer.details) overlayDetails.set(id, layer.details);
-	const color = COLORS[colorIndex++ % COLORS.length];
+	const { color, dash, markerSize } = overlayStyle(id);
 	const kinds = {
 		fill: [isGeom('Polygon'), { 'fill-color': color, 'fill-opacity': 0.2 }],
-		line: [['!', isGeom('Point')], { 'line-color': color, 'line-width': 1.5 }],
-		circle: [isGeom('Point'), { 'circle-color': color, 'circle-radius': 5, 'circle-stroke-color': '#fff', 'circle-stroke-width': 1 }]
+		line: [['!', isGeom('Point')], { 'line-color': color, 'line-width': 1.5, ...(dash && { 'line-dasharray': dash }) }],
+		circle: [isGeom('Point'), { 'circle-color': color, 'circle-radius': markerSize, 'circle-stroke-color': '#fff', 'circle-stroke-width': markerSize === 5 ? 1 : 2 }]
 	};
 	for (const [type, [filter, base]] of Object.entries(kinds))
 		map.addLayer({

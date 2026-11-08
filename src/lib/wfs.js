@@ -58,7 +58,7 @@ export function showWfs(map, id, service, name, layer = {}, onNote, onLimit) {
 		zooming = true;
 		try {
 			while (!disposed) {
-				const maxZoom = map.getMaxZoom() ?? 22;
+				const maxZoom = Number.isFinite(layer.minZoom) ? Math.min(map.getMaxZoom() ?? 22, layer.minZoom) : map.getMaxZoom() ?? 22;
 				if (map.getZoom() >= maxZoom) {
 					onLimit?.(true, zoomToFit, true);
 					return;
