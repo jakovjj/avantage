@@ -104,9 +104,9 @@
 <style>
 	:global(body) { margin: 0; height: 100dvh; font: 14px system-ui, sans-serif; color-scheme: light; background: #fff; color: #222; }
 	.layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: 100%; }
-	.layout.with-details { grid-template-columns: 320px minmax(0, 1fr) 320px; }
 	.sidebar { overflow-y: auto; padding: 0 16px 16px; border-right: 1px solid #ddd; }
-	.details { overflow-y: auto; min-width: 0; padding: 12px; border-left: 1px solid #ddd; }
+	/* Overlays the map: resizing the map container would move and re-centre the map. */
+	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; z-index: 10; overflow-y: auto; padding: 12px; border-left: 1px solid #ddd; background: #fff; }
 	header { display: flex; justify-content: space-between; align-items: center; }
 	h1 { font-size: 20px; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
@@ -119,4 +119,6 @@
 	.close { float: right; margin: 0 0 8px 8px; }
 	code { position: fixed; top: 8px; right: 8px; padding: 2px 6px; background: #fffc; font-size: 12px; pointer-events: none; }
 	code.details-open { right: 328px; }
+	/* Map controls move aside so the panel doesn't cover them. */
+	.layout.with-details :global(.maplibregl-ctrl-bottom-right) { right: 320px; }
 </style>
