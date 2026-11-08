@@ -11,9 +11,20 @@
 //   images       { name: SVG markup } icons for `symbol` (drawn at half the SVG's size, for sharp edges)
 //   symbol       { layout, paint } of an extra MapLibre symbol layer on top: icons, labels
 //   snapshot     WFS: URL of a saved GetFeature response (src/lib/snapshots/) used instead of the server; see AGENTS.md
+//   tileSize     WMS tile size in px (default 512)
+//   exclusive    key shared by layers of which only one may be on (turning one on turns the others off)
+//   overview     WMS: { url, bounds: [w, s, e, n], maxZoom } a saved image of the whole layer shown below maxZoom
+//                instead of the server's tiles (src/lib/snapshots/); see AGENTS.md
 import OdbaceniOtpad, { STATUS_COLORS } from './panels/OdbaceniOtpad.svelte';
 import Odlagaliste, { MARKERS as LANDFILL_MARKERS } from './panels/Odlagaliste.svelte';
 import odlagalistaSnapshot from './snapshots/v_odlagalista_geom.json?url';
+import natureSolar from './snapshots/ocjena_priroda_solar.png?url';
+import natureWind from './snapshots/ocjena_priroda_vjetar.png?url';
+import habitats from './snapshots/osjetljivost_stanista.png?url';
+import batsSolar from './snapshots/ascii_osjetljivost_sismisi_solar_import.png?url';
+import batsWind from './snapshots/ascii_osjetljivost_sismisi_vjetar.png?url';
+import groupSolar from './snapshots/ascii_osjetljivost_vrsta_solar.png?url';
+import groupWind from './snapshots/ascii_osjetljivost_vrsta_vjetar.png?url';
 
 // Ready layers: designed by hand, one by one (own colours and details panel), and listed in AGENTS.md.
 // Lokacije odbačenog otpada (AZO): WFS only, dots coloured like the AZO WMS style.
@@ -82,7 +93,15 @@ const NKS_COLOR = ['match', ['get', 'nks1_style'],
 ];
 
 // Sensitivity grids come as a few huge dissolved polygons (one is ~6 MB), so WFS can't show them at any zoom.
-const HEATMAP = { heatmap: 'https://services.bioportal.hr/wms' };
+// Bioportal renders them slowly when zoomed out (a 512 px tile of Croatia takes ~7 s, a 256 px one ~1.2 s;
+// all of Croatia 6.8 s vs 4.4 s), so they use 256 px tiles.
+// They cover all of Croatia, so they share one sidebar section and only one is shown at a time.
+const HEATMAP = { heatmap: 'https://services.bioportal.hr/wms', tileSize: 256, group: 'Osjetljivost', exclusive: 'osjetljivost' };
+// The slow ones (all of Croatia at zoom 7 in 256 px tiles: prirode 4.5 s, staništa 3.6 s, šišmiši 2.5 s, skupno
+// 1.9–2.5 s; ptice 1.6 s and velike zvijeri 0.5 s stay live) show a saved image of all of Croatia below zoom 8 (zoom 8
+// sharpness, 8–25 s for the server to render) instead of the tiles. See Snapshots in AGENTS.md.
+const OVERVIEW_BOUNDS = [13.4, 42.3, 19.55, 46.6];
+const WITH_OVERVIEW = (url) => ({ ...HEATMAP, overview: { url, bounds: OVERVIEW_BOUNDS, maxZoom: 8 } });
 
 const PERISKE_DETAILS = {
 	fields: [
@@ -191,15 +210,15 @@ export default [
 			},
 			'dzzpnpis:ascii_osjetljivost_ptice_solar': HEATMAP,
 			'dzzpnpis:ascii_osjetljivost_ptice_vjetar': HEATMAP,
-			'dzzpnpis:ascii_osjetljivost_vrsta_solar': HEATMAP,
-			'dzzpnpis:ascii_osjetljivost_vrsta_vjetar': HEATMAP,
+			'dzzpnpis:ascii_osjetljivost_vrsta_solar': WITH_OVERVIEW(groupSolar),
+			'dzzpnpis:ascii_osjetljivost_vrsta_vjetar': WITH_OVERVIEW(groupWind),
 			'dzzpnpis:ascii_osjetljivost_velike_zvijeri_solar': HEATMAP,
 			'dzzpnpis:ascii_osjetljivost_velike_zvijeri_vjetar': HEATMAP,
-			'dzzpnpis:ascii_osjetljivost_sismisi_solar_import': HEATMAP,
-			'dzzpnpis:ascii_osjetljivost_sismisi_vjetar': HEATMAP,
-			'dzzpnpis:osjetljivost_stanista': HEATMAP,
-			'dzzpnpis:ocjena_priroda_solar': HEATMAP,
-			'dzzpnpis:ocjena_priroda_vjetar': HEATMAP,
+			'dzzpnpis:ascii_osjetljivost_sismisi_solar_import': WITH_OVERVIEW(batsSolar),
+			'dzzpnpis:ascii_osjetljivost_sismisi_vjetar': WITH_OVERVIEW(batsWind),
+			'dzzpnpis:osjetljivost_stanista': WITH_OVERVIEW(habitats),
+			'dzzpnpis:ocjena_priroda_solar': WITH_OVERVIEW(natureSolar),
+			'dzzpnpis:ocjena_priroda_vjetar': WITH_OVERVIEW(natureWind),
 			'dzzpnpis:poucna_info_ploca': { id: (f) => f.properties.poucna_info_ploca_id },
 			'dzzpnpis:poucna_staza': { id: (f) => f.properties.poucna_staza_id },
 			'dzzpnpis:prijedlog_podrucja_obnove_grupa_1': { group: 'Loše stanje stanišnih tipova' },
