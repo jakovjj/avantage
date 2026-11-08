@@ -97,6 +97,8 @@ Keep these to what cannot be inferred automatically. Supported keys:
   are far too big as vectors (Bioportal sensitivity maps are a few dissolved polygons of several MB each).
 - `hide` — leave the layer out of the sidebar (e.g. its data is shown from another service instead).
 - `panel` — Svelte component (`src/lib/panels/`) replacing the properties table in the details panel.
+- `loadAll` — WFS only: download the whole layer once, without the 100 KB cap, and never switch to viewport mode.
+  Only after measuring that the full download is acceptable (compressed size, time).
 
 New tweak types must be generic (applied by `map.js`/`wfs.js`/`Source.svelte`/the page), not special-cased per
 source in code.
@@ -107,7 +109,8 @@ Layers the user has designed by hand, one by one: own colours, own details panel
 only. Their config sits in the "Ready layers" block at the top of `sources.js`. **Don't change them** unless the user
 asks; every other layer keeps the automatic defaults. Add a layer here when the user says its design is done.
 
-- **Lokacije odbačenog otpada** (AZO) — WFS only (`otpad:odbaceni_otpad`; the WMS layer is hidden). Dots coloured by
+- **Lokacije odbačenog otpada** (AZO) — WFS only (`otpad:odbaceni_otpad`; the WMS layer is hidden), `loadAll`
+  (14,195 points, 1.35 MB gzipped). Dots coloured by
   `status_lokacije_otpada` like the AZO WMS style; panel `OdbaceniOtpad.svelte` (status, place, description, waste
   type/amount/area, photo grid with Viewer.js; dot size by kg on a log scale).
 

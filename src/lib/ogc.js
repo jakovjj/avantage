@@ -114,10 +114,13 @@ function wmtsTiles(endpoint, name) {
 	throw new Error('Sloj nema EPSG:3857 mrežu pločica');
 }
 
-/** WFS layer features (GeoJSON, WGS84), optionally inside bbox [w, s, e, n]; null if over maxBytes. */
+/**
+ * WFS layer features (GeoJSON, WGS84), optionally inside bbox [w, s, e, n]; null if over maxBytes.
+ * Only a view (bbox) is capped at MAX_FEATURES; a whole layer is all or nothing, limited by maxBytes.
+ */
 export async function getFeatures({ endpoint }, name, { bbox, maxBytes, signal } = {}) {
 	const url = endpoint.getFeatureUrl(name, {
-		asJson: true, outputCrs: 'EPSG:4326', maxFeatures: MAX_FEATURES, extent: bbox, extentCrs: 'EPSG:4326'
+		asJson: true, outputCrs: 'EPSG:4326', maxFeatures: bbox ? MAX_FEATURES : undefined, extent: bbox, extentCrs: 'EPSG:4326'
 	});
 	const text = await fetchText(url, { maxBytes, signal });
 	if (text === null) return null;
