@@ -4,10 +4,13 @@
 	import { addOverlay, removeOverlay } from './map.js';
 	import { showWfs } from './wfs.js';
 
-	let { map, url, type, title, layers = {}, open = false, onremove, reset = 0 } = $props();
-	let service = $state(), error = $state(), attempt = $state(0);
+	let { map, url, type, title, layers = {}, open = false, onremove, onLimit, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	let service = $state(), error = $state(), attempt = $state(0), loading = $state(false);
 	let on = $state({}), note = $state({}), legend = $state({}); // per layer name: checked, status text, legend image
-	let query = $state('');
+	let rootOpen = $state(untrack(() => open));
+	let groupOpen = $state({});
+	let searchSnapshot;
+	const active = $derived(Object.values(on).some(Boolean));
 	const hide = {}; // per layer name: removes it from the map
 
 	// Grey icon of what a layer looks like on the map (12×12 SVG content).
@@ -24,22 +27,29 @@
 	$effect(() => {
 		if (!reset) return;
 		untrack(() => {
-			query = '';
 			for (const name in on) if (on[name]) (on[name] = false), toggle(name);
 		});
 	});
 
-	// GetCapabilities runs only once the group is opened; `attempt` lets a retry re-run it.
+	// GetCapabilities loads when the service opens or a global search needs its layers.
 	$effect(() => {
 		attempt;
-		if (open && !service && !error) inspect(url, type).then((s) => (service = s), (e) => (error = e.message));
+		if ((rootOpen || filterQuery.trim()) && !service && !error && !loading) {
+			loading = true;
+			inspect(url, type).then(
+				(s) => (service = s, loading = false),
+				(e) => (error = e.message, loading = false)
+			);
+		}
 	});
 
 	// Group title prefix ("2018" in "2018 - Reciklažna dvorišta"); some servers write the
 	// dash without the trailing space ("2017 -Građevni otpad") or as an en dash.
+	const naturalOrder = new Intl.Collator('hr', { numeric: true, sensitivity: 'base' });
 	const titlePrefix = (title) => title.match(/^(.+?)\s+[-–—]\s*/)?.[1] ?? null;
-	const layerGroup = (l) => layers[l.name]?.group || titlePrefix(l.title);
+	const layerGroup = (l) => layers[l.name]?.group || l.title.match(/^(.+?)\s+\d{4}\s*[-–—]\s*\d{4}$/)?.[1] || titlePrefix(l.title) || l.title.match(/^(.+?)\s+\d{4}$/)?.[1] || l.title.match(/^(MTB)\s+\d+$/i)?.[1] || null;
 	const itemLabel = (l, group) => {
+		if (l.title.startsWith(`${group} `)) return l.title.slice(group.length).trim();
 		const match = l.title.match(/^(.+?)\s+[-–—]\s*/);
 		return match?.[1] === group ? l.title.slice(match[0].length) : l.title;
 	};
@@ -53,12 +63,12 @@
 		return counts;
 	});
 
-	const filtered = $derived((service?.layers ?? []).filter((l) => l.title.toLowerCase().includes(query.toLowerCase())));
+	const filtered = $derived((service?.layers ?? []).filter((l) => (!showActiveOnly || on[l.name]) && l.title.toLowerCase().includes(filterQuery.trim().toLowerCase())));
 
 	const sections = $derived.by(() => {
 		const groups = new Map();
 		const ungrouped = [];
-		for (const l of filtered) {
+		for (const l of [...filtered].sort((a, b) => naturalOrder.compare(a.title, b.title))) {
 			const g = layerGroup(l);
 			if (g && (layers[l.name]?.group || prefixCounts[g] >= 2)) {
 				if (!groups.has(g)) groups.set(g, []);
@@ -68,9 +78,29 @@
 			}
 		}
 		return {
-			groups: [...groups.entries()].map(([name, items]) => ({ name, items })).sort((a, b) => a.name.localeCompare(b.name, 'hr')),
-			ungrouped
+			groups: [...groups.entries()].map(([name, items]) => ({ name, items })).sort((a, b) => {
+				const tail = (name) => /staništ|vrst/i.test(name) ? 1 : 0;
+				return tail(a.name) - tail(b.name) || naturalOrder.compare(a.name, b.name);
+			}),
+			ungrouped: ungrouped.sort((a, b) => naturalOrder.compare(a.title, b.title))
 		};
+	});
+
+	$effect(() => {
+		const searching = Boolean(filterQuery.trim());
+		if (searching && !searchSnapshot) searchSnapshot = { root: rootOpen, groups: {} };
+		if (!searching && searchSnapshot) {
+			rootOpen = searchSnapshot.root;
+			for (const [name, wasOpen] of Object.entries(searchSnapshot.groups)) groupOpen[name] = wasOpen;
+			searchSnapshot = null;
+			return;
+		}
+		if (!searching) return;
+		rootOpen = true;
+		for (const { name } of sections.groups) {
+			if (!(name in searchSnapshot.groups)) searchSnapshot.groups[name] = Boolean(groupOpen[name]);
+			groupOpen[name] = true;
+		}
 	});
 
 	function retry() {
@@ -89,7 +119,9 @@
 		note[name] = '';
 		if (!on[name]) return hide[name]?.();
 		if (service.type === 'WFS' && !layers[name]?.heatmap) {
-			hide[name] = showWfs(map, id, service, name, layers[name], (t) => (note[name] = t));
+			hide[name] = showWfs(map, id, service, name, layers[name], (t) => (note[name] = t), (limited, zoomToFit, impossible = false) =>
+				onLimit?.(limited ? { id, title: service.layers.find((layer) => layer.name === name)?.title ?? name, zoomToFit, impossible } : null, id)
+			);
 			return;
 		}
 		try {
@@ -105,9 +137,11 @@
 	}
 </script>
 
-<details bind:open>
+
+{#if !filterQuery.trim() || !service || error || filtered.length}
+<details bind:open={rootOpen}>
 	<summary>
-		{title ?? service?.info.title ?? url} <small>{service?.type ?? type ?? ''}</small>
+		<span class:active>{title ?? service?.info.title ?? url}</span> <small>{service?.type ?? type ?? ''}</small>
 		{#if onremove}<button onclick={(e) => (e.preventDefault(), onremove())} title="Ukloni">✕</button>{/if}
 	</summary>
 	{#if error}
@@ -117,10 +151,9 @@
 		<small>Učitavam…</small>
 	{:else}
 		<a href={service.capabilitiesUrl} target="_blank" rel="noreferrer">{service.type} endpoint</a>
-		{#if service.layers.length > 10}<input type="search" placeholder="Filtriraj" bind:value={query} />{/if}
 		{#each sections.groups as { name, items } (name)}
-			<details class="group" open={query ? true : undefined}>
-				<summary>{name} <small>({items.length})</small></summary>
+			<details class="group" bind:open={groupOpen[name]} class:active={items.some((l) => on[l.name])}>
+				<summary><span>{name}</span> <small>({items.length})</small></summary>
 				{#each items as l (l.name)}
 				{@render row(l, itemLabel(l, name))}
 				{/each}
@@ -129,6 +162,7 @@
 		{#each sections.ungrouped as l (l.name)}{@render row(l, l.title)}{/each}
 	{/if}
 </details>
+{/if}
 
 {#snippet row(l, text)}
 	{@const [kind, icon] = KINDS[kindOf(l)] ?? []}
@@ -146,10 +180,13 @@
 <style>
 	summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 	summary button { float: right; }
+	summary span { padding: 2px 4px; }
+	summary span.active { background: #e8eef5; }
+	details.group.active > summary span { background: #eaf2e8; }
 	details.group { margin: 0 0 0 12px; }
 	details.group > summary { font-weight: 500; font-size: 14px; padding: 6px 0; }
 	label { display: flex; gap: 6px; align-items: baseline; padding: 3px 0 3px 12px; cursor: pointer; }
-	a, img, small, input[type='search'], pre + button { display: block; margin: 0 0 6px 12px; }
+	a, img, small, pre + button { display: block; margin: 0 0 6px 12px; }
 	label small, summary small { display: inline; margin: 0; }
 	svg { width: 14px; height: 14px; margin-left: 3px; vertical-align: -2px; color: #777; }
 	small, a { color: #666; font-size: 12px; }
