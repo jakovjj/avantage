@@ -57,11 +57,42 @@ async function sampleKinds(endpoint, kinds) {
 	return kinds;
 }
 
+const words = (s) => new Set(s?.toLowerCase().match(/[\p{L}\d]+/gu) ?? []);
+
+/**
+ * Public page of a metadata record. Layers link to GeoNetwork catalogues (the national NIPP geoportal) by URLs that
+ * need a login or are plain http, while the catalogue's own record page works. The records themselves can't be read
+ * from a browser: NIPP sends its CORS header twice ("*, *"), which browsers reject.
+ */
+function recordPage(url) {
+	const u = new URL(url);
+	const id = u.searchParams.get('uuid') ?? u.searchParams.get('id');
+	const catalogue = u.pathname.match(/^\/[^/]+\/srv\//)?.[0];
+	return id && catalogue ? `https://${u.host}${catalogue}hrv/catalog.search#/metadata/${id}` : url;
+}
+
+/**
+ * Official description of a layer, or null: its own abstract when that says something (most servers repeat the
+ * title, "null", or the service's abstract), with the page of a metadata record it links to, if any.
+ */
+function about({ title, abstract, metadata }, serviceAbstract) {
+	const known = words(title);
+	if (!abstract || abstract === serviceAbstract || [...words(abstract)].filter((w) => !known.has(w)).length < 3) return null;
+	const record = metadata?.[0]?.url;
+	return { text: abstract.trim(), record: record && recordPage(record) };
+}
+
 function listLayers(type, endpoint, kinds) {
+	const serviceAbstract = endpoint.getServiceInfo().abstract;
 	if (type === 'WFS')
-		return endpoint.getFeatureTypes().map((f) => ({ name: f.name, title: f.title || f.name, kind: kinds[f.name.split(':').pop()] }));
+		return endpoint.getFeatureTypes().map((f) => ({
+			name: f.name, title: f.title || f.name, kind: kinds[f.name.split(':').pop()],
+			about: about(endpoint.getFeatureTypeSummary(f.name) ?? f, serviceAbstract)
+		}));
 	if (type === 'WMTS') return endpoint.getLayers().map((l) => ({ name: l.name, title: l.name, kind: 'raster' }));
-	return endpoint.getFlattenedLayers().filter((l) => l.name).map((l) => ({ name: l.name, title: l.title || l.name, kind: 'raster' }));
+	return endpoint.getFlattenedLayers().filter((l) => l.name).map((l) => ({
+		name: l.name, title: l.title || l.name, kind: 'raster', about: about(endpoint.getLayerByName(l.name) ?? l, serviceAbstract)
+	}));
 }
 
 /** Reads GetCapabilities; without a known type, tries each service type in turn. */
