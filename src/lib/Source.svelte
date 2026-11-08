@@ -37,9 +37,11 @@
 
 	// Group title prefix ("2018" in "2018 - Reciklažna dvorišta"); some servers write the
 	// dash without the trailing space ("2017 -Građevni otpad") or as an en dash.
+	const naturalOrder = new Intl.Collator('hr', { numeric: true, sensitivity: 'base' });
 	const titlePrefix = (title) => title.match(/^(.+?)\s+[-–—]\s*/)?.[1] ?? null;
-	const layerGroup = (l) => layers[l.name]?.group || titlePrefix(l.title);
+	const layerGroup = (l) => layers[l.name]?.group || l.title.match(/^(.+?)\s+\d{4}\s*[-–—]\s*\d{4}$/)?.[1] || titlePrefix(l.title) || l.title.match(/^(.+?)\s+\d{4}$/)?.[1] || l.title.match(/^(MTB)\s+\d+$/i)?.[1] || null;
 	const itemLabel = (l, group) => {
+		if (l.title.startsWith(`${group} `)) return l.title.slice(group.length).trim();
 		const match = l.title.match(/^(.+?)\s+[-–—]\s*/);
 		return match?.[1] === group ? l.title.slice(match[0].length) : l.title;
 	};
@@ -58,7 +60,7 @@
 	const sections = $derived.by(() => {
 		const groups = new Map();
 		const ungrouped = [];
-		for (const l of filtered) {
+		for (const l of [...filtered].sort((a, b) => naturalOrder.compare(a.title, b.title))) {
 			const g = layerGroup(l);
 			if (g && (layers[l.name]?.group || prefixCounts[g] >= 2)) {
 				if (!groups.has(g)) groups.set(g, []);
@@ -68,8 +70,11 @@
 			}
 		}
 		return {
-			groups: [...groups.entries()].map(([name, items]) => ({ name, items })).sort((a, b) => a.name.localeCompare(b.name, 'hr')),
-			ungrouped
+			groups: [...groups.entries()].map(([name, items]) => ({ name, items })).sort((a, b) => {
+				const tail = (name) => /staništ|vrst/i.test(name) ? 1 : 0;
+				return tail(a.name) - tail(b.name) || naturalOrder.compare(a.name, b.name);
+			}),
+			ungrouped: ungrouped.sort((a, b) => naturalOrder.compare(a.title, b.title))
 		};
 	});
 
