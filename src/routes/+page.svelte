@@ -28,6 +28,13 @@
 		selectedFeature = feature ? { feature, sourceId, details } : null;
 	}
 
+	function googleMapsUrl(feature) {
+		const coordinates = feature.geometry?.type === 'Point' ? feature.geometry.coordinates : null;
+		if (!coordinates || !Number.isFinite(coordinates[0]) || !Number.isFinite(coordinates[1])) return null;
+		const query = `${coordinates[1]},${coordinates[0]}`;
+		return `https://www.google.com/maps/search/?api=1&${new URLSearchParams({ query })}`;
+	}
+
 	// Custom services are a per-user convenience; storage may be unavailable.
 	function loadCustom() {
 		try {
@@ -104,6 +111,9 @@
 		<aside class="details">
 			<button class="close" aria-label="Zatvori" onclick={() => clearSelection(map)}>✕</button>
 			{@html propsTable(selectedFeature.feature.properties, selectedFeature.details)}
+			{#if googleMapsUrl(selectedFeature.feature)}
+				<a href={googleMapsUrl(selectedFeature.feature)} target="_blank" rel="noopener noreferrer">Google Maps</a>
+			{/if}
 		</aside>
 	{/if}
 </div>
