@@ -13,6 +13,7 @@
 	let url = $state('');
 	let showAddForm = $state(false);
 	let showActiveOnly = $state(false);
+	let filterQuery = $state('');
 	let resets = $state(0); // bumped by the reset button, see Source.svelte
 	let cursor = $state(), zoom = $state(); // debug readout
 	let issues = $state([]), activeIssue = $state();
@@ -72,12 +73,13 @@
 	<aside class="sidebar">
 		<header>
 			<h1>Avantage</h1>
-			<button onclick={() => resets++}>Resetiraj</button>
+			<button onclick={() => (resets++, filterQuery = '')}>Resetiraj</button>
 		</header>
 		<label class="active-toggle"><input type="checkbox" bind:checked={showActiveOnly} /> Pokaži aktivne slojeve</label>
+		<input class="layer-filter" type="search" placeholder="Filtriraj slojeve" bind:value={filterQuery} />
 		{#if map}
-			{#each SOURCES as source}<Source {map} {...source} reset={resets} {showActiveOnly} onLimit={reportLimit} />{/each}
-			{#each custom as source (source)}<Source {map} {...source} reset={resets} {showActiveOnly} onLimit={reportLimit} onremove={() => remove(source)} />{/each}
+			{#each SOURCES as source}<Source {map} {...source} reset={resets} {showActiveOnly} {filterQuery} onLimit={reportLimit} />{/each}
+			{#each custom as source (source)}<Source {map} {...source} reset={resets} {showActiveOnly} {filterQuery} onLimit={reportLimit} onremove={() => remove(source)} />{/each}
 		{/if}
 		<div class="manual-options">
 			<label class="manual-toggle"><input type="checkbox" bind:checked={showAddForm} /> Dodaj ručno slojeve</label>
@@ -119,6 +121,7 @@
 	h1 { font-size: 20px; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
 	input { flex: 1; min-width: 0; }
+	.layer-filter { flex: none; height: 1.5em; margin: 0 0 6px; padding-block: 0; }
 	.manual-toggle { display: flex; align-items: center; gap: 6px; margin: 12px 0; }
 	.manual-toggle input { flex: none; }
 	.active-toggle { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; }
