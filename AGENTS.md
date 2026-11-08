@@ -54,7 +54,7 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 | `src/lib/wfs.js` | WFS loading strategy (small vs. big layers), glues `ogc.js` + `map.js` | contain UI |
 | `src/lib/wms.js` | Clicks on WMS-drawn layers (`featureInfo`): GetFeatureInfo → details panel + outline, glues `ogc.js` + `map.js` | contain UI |
 | `src/lib/utils.js` | Small domain-free helpers (escaping, bbox math, size-capped fetch, running-download counter) | know about OGC or MapLibre |
-| `src/lib/Source.svelte` | UI for one service: layer list, toggles, status notes, legend, "`<TYPE>` endpoint" link | fetch data or build map layers itself |
+| `src/lib/Source.svelte` | UI for one service: layer list, toggles, status notes, opacity slider, legend | fetch data or build map layers itself |
 | `src/lib/panels/*.svelte` | Hand-designed details panel of one ready layer, given the clicked feature's `properties` | fetch data or touch the map |
 | `src/lib/snapshots/*.json` | Saved WFS GetFeature responses for `snapshot` layers, exactly as the server sent them | be edited by hand |
 | `src/routes/+page.svelte` | Page layout, sidebar, "add service" form, map container, debug readout | contain map/OGC logic |
@@ -107,6 +107,8 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `paint` — MapLibre paint overrides per kind: `{ fill, line, circle }` (e.g. habitat map coloured by NKS class).
 - `group` — sidebar group title when it can't come from the `Group - layer` title prefix.
 - `label` — the layer's row text in its group when it can't come from the title (rows are sorted by it).
+- `opacity` — WMS: an opacity slider under the row while the layer is on, for rasters covering the whole map
+  (the Osjetljivost maps and the habitat polygon layers).
 - `ready` — a designed layer: listed on top under its service's `category` (see Ready layers).
 - `minZoom` — map zoom below which the layer is neither drawn nor requested.
 - `details` — labelled fields shown first in the right-hand details panel: `{ fields: [{ keys, label }] }`; all other
@@ -242,8 +244,9 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   gradients, animations or transitions, no colour themes/variables. A few lines per component is the target.
 - Sidebar: `Avantage` title, the layer filter, the three categories of ready layers, then (with "Prikaži sve
   slojeve") one `<details>` per service and the user's own services; at the bottom the two option checkboxes and the
-  URL form. A service links to its
-  GetCapabilities document with the text **`<TYPE> endpoint`** (e.g. "WFS endpoint"), nothing more.
+  URL form. No GetCapabilities ("`<TYPE> endpoint`") links in the sidebar: they put off ordinary users.
+- A layer with the `opacity` tweak gets a native range slider under its row while it's on (0–1, default 0.8 like
+  every raster), above its legend; it sets the tiles and the `overview` image.
 - The data provider (from GetCapabilities) is credited in the MapLibre attribution, not in the sidebar.
 - A layer row has an (i) after its type icon only when GetCapabilities gives an **official** description (`about` in
   `ogc.js`): an abstract that says more than the title (not the title again, "null", or the service's abstract); a
