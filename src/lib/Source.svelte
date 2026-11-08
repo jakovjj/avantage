@@ -6,12 +6,15 @@
 <script>
 	import { untrack } from 'svelte';
 	import { inspect, legendUrl, rasterSource } from './ogc.js';
-	import { addOverlay, removeOverlay } from './map.js';
+	import { RASTER_OPACITY, addOverlay, removeOverlay, setOpacity } from './map.js';
 	import { showWfs } from './wfs.js';
+	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, layers = {}, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	let { map, url, type, title, layers = {}, part, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
+	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
 	let service = $state(), error = $state(), attempt = $state(0), loading = $state(false);
-	let on = $state({}), note = $state({}), legend = $state({}); // per layer name: checked, status text, legend image
+	let on = $state({}), note = $state({}), legend = $state({}), opacity = $state({}); // per layer name: checked, status text, legend image, opacity
 	const infoLayer = $derived(shownInfo?.id.startsWith(`${url}#`) && service?.layers.find((l) => `${url}#${l.name}` === shownInfo.id));
 
 	// The box opens over the map, beside the sidebar, level with the layer's row: downwards from a row in the upper half
@@ -63,7 +66,7 @@
 			localStorage.setItem(STORED, JSON.stringify([...storedIds().filter((s) => s !== id), ...(enabled ? [id] : [])]));
 		} catch {}
 	}
-	const restore = untrack(() => storedIds().filter((id) => id.startsWith(`${url}#`)).map((id) => id.slice(url.length + 1)));
+	const restore = untrack(() => storedIds().filter((id) => id.startsWith(`${url}#`)).map((id) => id.slice(url.length + 1)).filter(inPart));
 
 	$effect(() => {
 		if (service) untrack(() => {
@@ -71,10 +74,11 @@
 		});
 	});
 
-	// GetCapabilities loads when the service opens, a global search needs its layers or it has layers to restore.
+	// GetCapabilities loads when the service opens, a global search needs its layers, it has layers to restore or it's in
+	// the full list (which leaves out services whose layers are all listed on top).
 	$effect(() => {
 		attempt;
-		if ((rootOpen || filterQuery.trim() || restore.length) && !service && !error && !loading) {
+		if ((rootOpen || filterQuery.trim() || restore.length || part === 'rest') && !service && !error && !loading) {
 			loading = true;
 			inspect(url, type).then(
 				(s) => (service = s, loading = false),
@@ -89,12 +93,13 @@
 	const titlePrefix = (title) => title.match(/^(.+?)\s+[-–—]\s*/)?.[1] ?? null;
 	const layerGroup = (l) => layers[l.name]?.group || l.title.match(/^(.+?)\s+\d{4}\s*[-–—]\s*\d{4}$/)?.[1] || titlePrefix(l.title) || l.title.match(/^(.+?)\s+\d{4}$/)?.[1] || l.title.match(/^(MTB)\s+\d+$/i)?.[1] || null;
 	const itemLabel = (l, group) => {
+		if (layers[l.name]?.label) return layers[l.name].label;
 		if (l.title.startsWith(`${group} `)) return l.title.slice(group.length).trim();
 		const match = l.title.match(/^(.+?)\s+[-–—]\s*/);
 		return match?.[1] === group ? l.title.slice(match[0].length) : l.title;
 	};
 
-	const listed = $derived((service?.layers ?? []).filter((l) => !layers[l.name]?.hide));
+	const listed = $derived((service?.layers ?? []).filter((l) => !layers[l.name]?.hide && inPart(l.name)));
 
 	const prefixCounts = $derived.by(() => {
 		const counts = {};
@@ -120,7 +125,7 @@
 			}
 		}
 		return {
-			groups: [...groups.entries()].map(([name, items]) => ({ name, items })).sort((a, b) => {
+			groups: [...groups.entries()].map(([name, items]) => ({ name, items: items.sort((a, b) => naturalOrder.compare(itemLabel(a, name), itemLabel(b, name))) })).sort((a, b) => {
 				const tail = (name) => /staništ|vrst/i.test(name) ? 1 : 0;
 				return tail(a.name) - tail(b.name) || naturalOrder.compare(a.name, b.name);
 			}),
@@ -150,9 +155,9 @@
 		attempt++;
 	}
 
-	// A heatmap layer is drawn from the WMS that publishes it, possibly without the WFS namespace prefix.
-	async function heatmapSource(name) {
-		const wms = await inspect(layers[name].heatmap, 'WMS');
+	// A WFS layer with a `wms` tweak is drawn from the WMS that publishes it, possibly without the WFS namespace prefix.
+	async function wmsSource(name) {
+		const wms = await inspect(layers[name].wms, 'WMS');
 		return [wms, [name, name.split(':').pop()].find((n) => wms.endpoint.getLayerByName(n)) ?? name];
 	}
 
@@ -160,20 +165,22 @@
 		const id = `${url}#${name}`;
 		store(id, on[name]);
 		note[name] = '';
-		if (!on[name]) return hide[name]?.();
+		if (!on[name]) return (delete opacity[name], hide[name]?.());
 		// Layers sharing an `exclusive` key work like radio buttons: turning one on turns the others off.
 		const set = layers[name]?.exclusive;
 		if (set) for (const other in on) if (other !== name && on[other] && layers[other]?.exclusive === set) (on[other] = false), toggle(other);
-		if (service.type === 'WFS' && !layers[name]?.heatmap) {
+		if (service.type === 'WFS' && !layers[name]?.wms) {
 			hide[name] = showWfs(map, id, service, name, layers[name], (t) => (note[name] = t));
 			return;
 		}
 		try {
-			const [src, layer] = layers[name]?.heatmap ? await heatmapSource(name) : [service, name];
+			const [src, layer] = layers[name]?.wms ? await wmsSource(name) : [service, name];
 			if (!on[name]) return; // turned off while the WMS capabilities were loading
-			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize), layers[name]);
+			const kind = service.layers.find((l) => l.name === name)?.kind;
+			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize), layers[name], kind);
 			legend[name] = legendUrl(src, layer);
-			hide[name] = () => removeOverlay(map, id);
+			const stopQueries = layers[name]?.featureInfo && queryOnClick(map, id, src, layer, service, name, kind === 'points');
+			hide[name] = () => (stopQueries?.(), removeOverlay(map, id));
 		} catch (e) {
 			note[name] = e.message;
 			on[name] = false;
@@ -183,7 +190,7 @@
 </script>
 
 
-{#if !filterQuery.trim() || !service || error || filtered.length}
+{#if !(part && service && !listed.length) && (!filterQuery.trim() || !service || error || filtered.length)}
 <details bind:open={rootOpen}>
 	<summary>
 		<span class:active>{title ?? service?.info.title ?? url}</span> <small>{service?.type ?? type ?? ''}</small>
@@ -195,7 +202,6 @@
 	{:else if !service}
 		<small>Učitavam…</small>
 	{:else}
-		<a href={service.capabilitiesUrl} target="_blank" rel="noreferrer">{service.type} endpoint</a>
 		{#each sections.groups as { name, items } (name)}
 			<details class="group" bind:open={groupOpen[name]} class:active={items.some((l) => on[l.name])}>
 				<summary><span>{name}</span> <small>({items.length})</small></summary>
@@ -243,6 +249,10 @@
 			</button>
 		{/if}
 	</label>
+	{#if on[l.name] && layers[l.name]?.opacity}
+		<input type="range" min="0" max="1" step="0.05" title="Neprozirnost" value={opacity[l.name] ?? RASTER_OPACITY}
+			oninput={(e) => setOpacity(map, `${url}#${l.name}`, (opacity[l.name] = +e.currentTarget.value))} />
+	{/if}
 	{#if on[l.name] && legend[l.name]}<img src={legend[l.name]} alt="" />{/if}
 {/snippet}
 
@@ -258,6 +268,7 @@
 	a, img, small, pre + button { display: block; margin: 0 0 6px 12px; }
 	label small, summary small { display: inline; margin: 0; }
 	label > span { flex: 1; }
+	input[type='range'] { display: block; box-sizing: border-box; width: calc(100% - 31px); margin: 0 0 6px 31px; }
 	svg { flex: none; align-self: center; width: 14px; height: 14px; color: #777; }
 	.info { display: flex; align-self: center; padding: 0; border: 0; background: none; cursor: pointer; }
 	.info.open svg { color: #222; }

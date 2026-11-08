@@ -96,8 +96,17 @@ function listLayers(type, endpoint, kinds) {
 	}));
 }
 
-/** Reads GetCapabilities; without a known type, tries each service type in turn. */
-export async function inspect(url, type = guessType(url)) {
+// One read per service: it's listed in two parts of the sidebar, and WMS-drawn WFS layers ask its WMS on every toggle.
+const inspected = new Map();
+
+/** Reads GetCapabilities (once, unless it failed); without a known type, tries each service type in turn. */
+export function inspect(url, type = guessType(url)) {
+	const key = `${type} ${url}`;
+	if (!inspected.has(key)) inspected.set(key, readCapabilities(url, type).catch((e) => (inspected.delete(key), Promise.reject(e))));
+	return inspected.get(key);
+}
+
+async function readCapabilities(url, type) {
 	const errors = [];
 	for (const t of type ? [type] : Object.keys(ENDPOINTS)) {
 		try {
@@ -167,6 +176,34 @@ export const providerName = ({ info, capabilitiesUrl }) =>
 
 /** HTML credit for the map's attribution control. */
 export const attribution = (service) => escapeHtml(providerName(service));
+
+/** Attribute names of a WFS layer, without its geometry (DescribeFeatureType). */
+export const attributeNames = async ({ endpoint }, name) => Object.keys((await track(endpoint.getFeatureTypeFull(name))).properties);
+
+/**
+ * The feature of a WMS layer at pixel (i, j) of a `size` px GetMap of `bbox` (EPSG:3857), or null. Only `properties`
+ * are asked for (GeoServer's PROPERTYNAME): with its geometry, one big polygon can be 20+ MB.
+ */
+export async function featureInfo({ endpoint }, name, { bbox, size, i, j, properties }) {
+	const url = new URL(endpoint.getMapUrl([name], { widthPx: size, heightPx: size, crs: 'EPSG:3857', extent: bbox, outputFormat: 'image/png' }));
+	const query = { REQUEST: 'GetFeatureInfo', QUERY_LAYERS: name, INFO_FORMAT: 'application/json', FEATURE_COUNT: 1, I: i, J: j };
+	for (const [key, value] of Object.entries({ ...query, ...(properties && { PROPERTYNAME: properties.join(',') }) }))
+		url.searchParams.set(key, value);
+	return JSON.parse(await fetchText(url.href)).features?.[0] ?? null;
+}
+
+/** MapLibre tiles of one feature of a WMS layer drawn as a `color` outline (GeoServer's FEATUREID and SLD_BODY). */
+export function outlineSource({ endpoint }, name, featureId, color, point) {
+	const stroke = `<Stroke><CssParameter name="stroke">${color}</CssParameter><CssParameter name="stroke-width">${point ? 3 : 4}</CssParameter></Stroke>`;
+	// A line style draws nothing for points, so they get a ring (a point style would mark the middle of lines and areas).
+	const symbolizer = point
+		? `<PointSymbolizer><Graphic><Mark><WellKnownName>circle</WellKnownName><Fill><CssParameter name="fill-opacity">0</CssParameter></Fill>${stroke}</Mark><Size>18</Size></Graphic></PointSymbolizer>`
+		: `<LineSymbolizer>${stroke}</LineSymbolizer>`;
+	const sld = `<StyledLayerDescriptor version="1.0.0" xmlns="http://www.opengis.net/sld"><NamedLayer><Name>${escapeHtml(name)}</Name>` +
+		`<UserStyle><FeatureTypeStyle><Rule>${symbolizer}</Rule></FeatureTypeStyle></UserStyle></NamedLayer></StyledLayerDescriptor>`;
+	const filter = `&FEATUREID=${encodeURIComponent(featureId)}&SLD_BODY=${encodeURIComponent(sld)}`;
+	return { type: 'raster', tileSize: WMS_TILE, tiles: [wmsTiles(endpoint, name, WMS_TILE) + filter] };
+}
 
 /** MapLibre tile source for a WMS or WMTS layer; `tileSize` in px for WMS. */
 export const rasterSource = (service, name, tileSize = WMS_TILE) => ({
