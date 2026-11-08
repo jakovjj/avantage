@@ -178,17 +178,20 @@ export function viewBbox (map, scale = 1) {
 /** Adds a raster or GeoJSON source with optional per-layer display tweaks. */
 export function addOverlay (map, id, source, layer = {}) {
 	// A saved image of the whole layer stands in for the server's tiles while zoomed out, where they are slow. The
-	// tiles' source then starts at that zoom rather than their layer, so it stays in use and keeps crediting the data
-	// provider (image sources can't carry an attribution).
+	// tiles' source then starts later rather than their layer, so it stays in use and keeps crediting the data
+	// provider (image sources can't carry an attribution). MapLibre picks raster tiles by the rounded map zoom, and
+	// 256 px tiles one zoom deeper (512 px tiles match it), so tiles of zoom maxZoom + 1 (+ 1 for 256 px) first appear at
+	// map zoom maxZoom + 0.5: the image is shown until exactly then, so the two never overlap and never leave a gap.
 	const { overview } = layer;
-	map.addSource(id, overview ? { ...source, minzoom: Math.max(source.minzoom ?? 0, overview.maxZoom) } : source);
+	const tilesFrom = overview && overview.maxZoom + 1 + Math.log2(512 / (source.tileSize ?? 512));
+	map.addSource(id, overview ? { ...source, minzoom: Math.max(source.minzoom ?? 0, tilesFrom) } : source);
 	// Rasters cover the whole view, so they go under the basemap labels and stay a bit see-through.
 	if (source.type === 'raster') {
 		const below = map.getStyle().layers.find((l) => l.type === 'symbol')?.id, paint = { 'raster-opacity': 0.8 };
 		if (overview) {
 			const [w, s, e, n] = overview.bounds;
 			map.addSource(`${id}:overview`, { type: 'image', url: overview.url, coordinates: [[w, n], [e, n], [e, s], [w, s]] });
-			map.addLayer({ id: `${id}:overview`, type: 'raster', source: `${id}:overview`, maxzoom: overview.maxZoom, paint }, below);
+			map.addLayer({ id: `${id}:overview`, type: 'raster', source: `${id}:overview`, maxzoom: overview.maxZoom + 0.5, paint }, below);
 		}
 		return map.addLayer({ id, type: 'raster', source: id, paint }, below);
 	}
