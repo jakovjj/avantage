@@ -12,6 +12,7 @@
 	let custom = $state(loadCustom());
 	let url = $state('');
 	let showAddForm = $state(false);
+	let showAll = $state(false); // every layer of every service, not only the designed ones
 	let showActiveOnly = $state(false);
 	let filterQuery = $state('');
 	let resets = $state(0); // bumped by the reset button, see Source.svelte
@@ -141,10 +142,12 @@
 		<label class="active-toggle"><input type="checkbox" bind:checked={showActiveOnly} /> Pokaži aktivne slojeve</label>
 		<input class="layer-filter" type="search" placeholder="Filtriraj slojeve" bind:value={filterQuery} />
 		{#if map}
-			{#each SOURCES as source}<Source {map} {...source} reset={resets} {showActiveOnly} {filterQuery} />{/each}
+			{#each SOURCES.filter((s) => s.category) as source}<Source {map} {...source} title={source.category} part="ready" reset={resets} {showActiveOnly} {filterQuery} />{/each}
+			{#if showAll}{#each SOURCES as source}<Source {map} {...source} part="rest" reset={resets} {showActiveOnly} {filterQuery} />{/each}{/if}
 			{#each custom as source (source)}<Source {map} {...source} reset={resets} {showActiveOnly} {filterQuery} onremove={() => remove(source)} />{/each}
 		{/if}
 		<div class="manual-options">
+			<label class="manual-toggle"><input type="checkbox" bind:checked={showAll} /> Prikaži sve slojeve</label>
 			<label class="manual-toggle"><input type="checkbox" bind:checked={showAddForm} /> Dodaj ručno slojeve</label>
 			{#if showAddForm}
 				<form onsubmit={add}>

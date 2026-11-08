@@ -1,4 +1,4 @@
-import { MapLibreMap, NavigationControl, ScaleControl, setWorkerUrl } from 'maplibre-gl';
+import { MapLibreMap, MercatorCoordinate, NavigationControl, ScaleControl, setWorkerUrl } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import maskUrl from './croatia-mask.json?url';
@@ -6,6 +6,11 @@ import { simplify, track } from './utils.js';
 
 // MapLibre resolves its worker next to itself, which breaks once Vite bundles it.
 setWorkerUrl(workerUrl);
+
+// Dev only: this module's state (selection callback, clickable layers, shown features) belongs to the live map, so a
+// hot swap would leave the open page half-connected (no details panel, no pointer). Reload the page instead
+// (Vite's decline() is a no-op).
+if (import.meta.hot) import.meta.hot.accept(() => location.reload());
 
 const COLORS = [
 	'#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7',
@@ -26,7 +31,17 @@ const nonInteractive = new Set();
 const overlayLayers = new Map(); // overlay id → its per-layer tweaks from sources.js, for the details panel
 let colorIds;
 let colorIndexes;
-let activeSelection; // { sourceId, onFeatureSelect }
+let activeSelection; // { sourceId }
+let onSelect = () => {}; // createMap's onFeatureSelect
+// Raster overlays that answer clicks anywhere (WMS GetFeatureInfo): overlay id → query(point) resolving to
+// { feature, outline } or nothing. While one is on, the whole map shows a pointer.
+const clickableRasters = new Map();
+export const setClickable = (id, query) => (query ? clickableRasters.set(id, query) : clickableRasters.delete(id));
+// Overlays stack by geometry kind, points over lines over areas (and other rasters), and a click picks in that order.
+const KIND_RANKS = { lines: 1, points: 2 };
+const overlayRanks = new Map(); // overlay id → rank of its kind
+const rankOf = (source) => overlayRanks.get(source?.replace(/:overview$/, ''));
+let latestClick = 0;
 
 const isGeom = (t) => ['in', ['geometry-type'], ['literal', [t, `Multi${t}`]]];
 
@@ -96,15 +111,30 @@ export async function createMap (container, onFeatureSelect = () => {}, onLoadin
 	});
 	map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right'); // top-right holds the debug readout
 	map.addControl(new ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
-	map.on('click', (e) => {
+	onSelect = onFeatureSelect;
+	map.on('click', async (e) => {
+		const click = ++latestClick;
 		const rendered = overlayFeature(map, e.point);
+		// Server-drawn layers of a higher kind are asked all at once and win in rank order, then by what's drawn on top;
+		// at an equal rank the map's own feature wins, as it's drawn above every raster.
+		const order = map.getLayersOrder();
+		const queries = [...clickableRasters]
+			.filter(([id]) => !rendered || rankOf(id) > rankOf(rendered.source))
+			.sort(([a], [b]) => rankOf(b) - rankOf(a) || order.indexOf(b) - order.indexOf(a))
+			.map(([id, query]) => [id, query(e.point).catch(() => null)]);
+		for (const [id, answer] of queries) {
+			const hit = await answer;
+			if (click !== latestClick) return; // a newer click took over
+			if (hit) return selectRemote(map, id, hit);
+		}
 		if (!rendered) return;
 		const f = shownFeatures.get(rendered.source)?.get(rendered.id) ?? rendered;
+		removeHighlights(map);
 		showSelection(map, f, rendered);
-		activeSelection = { sourceId: rendered.source, onFeatureSelect };
-		onFeatureSelect(f, rendered.source, overlayLayers.get(rendered.source));
+		activeSelection = { sourceId: rendered.source };
+		onSelect(f, rendered.source, overlayLayers.get(rendered.source));
 	});
-	map.on('mousemove', (e) => (map.getCanvas().style.cursor = overlayFeature(map, e.point) ? 'pointer' : ''));
+	map.on('mousemove', (e) => (map.getCanvas().style.cursor = clickableRasters.size || overlayFeature(map, e.point) ? 'pointer' : ''));
 	map.on('dataloading', (e) => e.sourceId && map.getSource(e.sourceId)?.type === 'raster' && onLoading(true));
 	map.on('idle', () => onLoading(false));
 	return new Promise((resolve) => map.once('load', () => resolve(map)));
@@ -123,8 +153,11 @@ export function flyToCoordinates (map, coordinates, extent) {
 }
 
 // The selected feature glows: a soft amber disc under a point's marker, sized to it (circles and icons of any shape
-// and size), and an amber outline over lines and areas.
+// and size). Lines and areas get a black outline, which shows on any fill colour (drawn by the server for features of
+// WMS layers).
 const HIGHLIGHT = '#ffb300';
+export const OUTLINE_COLOR = '#000';
+const OUTLINE = `${SELECTION_SOURCE}:outline`;
 
 /** Radius in px of a rendered point's marker, from its evaluated circle or icon size. */
 function markerRadius(map, { layer: { type, paint, layout } }) {
@@ -144,7 +177,7 @@ function showSelection(map, feature, rendered) {
 		map.addSource(SELECTION_SOURCE, { type: 'geojson', data });
 		map.addLayer({
 			id: `${SELECTION_SOURCE}:line`, type: 'line', source: SELECTION_SOURCE,
-			filter: ['!', isGeom('Point')], paint: { 'line-color': HIGHLIGHT, 'line-width': 4, 'line-opacity': 0.9 }
+			filter: ['!', isGeom('Point')], paint: { 'line-color': OUTLINE_COLOR, 'line-width': 3 }
 		});
 		map.addLayer({
 			id: `${SELECTION_SOURCE}:point`, type: 'circle', source: SELECTION_SOURCE,
@@ -156,16 +189,38 @@ function showSelection(map, feature, rendered) {
 	map.moveLayer(`${SELECTION_SOURCE}:point`, map.getStyle().layers.find((l) => l.source === rendered.source)?.id);
 }
 
+function removeHighlights(map) {
+	for (const id of [`${SELECTION_SOURCE}:line`, `${SELECTION_SOURCE}:point`, OUTLINE]) if (map.getLayer(id)) map.removeLayer(id);
+	for (const id of [SELECTION_SOURCE, OUTLINE]) if (map.getSource(id)) map.removeSource(id);
+	nonInteractive.delete(SELECTION_SOURCE);
+}
+
+/** Selects a feature a WMS layer (overlay `sourceId`) returned: details panel, and `outline` tiles that draw it. */
+function selectRemote(map, sourceId, { feature, outline }) {
+	removeHighlights(map);
+	map.addSource(OUTLINE, outline);
+	map.addLayer({ id: OUTLINE, type: 'raster', source: OUTLINE });
+	activeSelection = { sourceId };
+	onSelect(feature, sourceId, overlayLayers.get(sourceId));
+}
+
 /** Clears the selected feature and its map highlight. */
 export function clearSelection(map) {
 	if (!activeSelection) return;
-	const { onFeatureSelect } = activeSelection;
 	activeSelection = null;
-	for (const id of [`${SELECTION_SOURCE}:line`, `${SELECTION_SOURCE}:point`])
-		if (map.getLayer(id)) map.removeLayer(id);
-	if (map.getSource(SELECTION_SOURCE)) map.removeSource(SELECTION_SOURCE);
-	nonInteractive.delete(SELECTION_SOURCE);
-	onFeatureSelect(null, null);
+	removeHighlights(map);
+	onSelect(null, null);
+}
+
+/** Web Mercator box (metres) of `size` px centred on a clicked point, as a WMS GetFeatureInfo needs it. */
+export function clickBox(map, point, size = 9) {
+	const half = (size - 1) / 2, world = 2 * Math.PI * 6378137;
+	const metres = (x, y) => {
+		const c = MercatorCoordinate.fromLngLat(map.unproject([x, y]));
+		return [(c.x - 0.5) * world, (0.5 - c.y) * world];
+	};
+	const [w, n] = metres(point.x - half, point.y - half), [e, s] = metres(point.x + half + 1, point.y + half + 1);
+	return { bbox: [w, s, e, n], size, i: half, j: half };
 }
 
 /** Current view as [w, s, e, n], grown by `scale` around its centre. */
@@ -175,24 +230,35 @@ export function viewBbox (map, scale = 1) {
 	return [w - dx, s - dy, e + dx, n + dy];
 }
 
-/** Adds a raster or GeoJSON source with optional per-layer display tweaks. */
-export function addOverlay (map, id, source, layer = {}) {
+// Rasters cover the whole view, so they stay a bit see-through (the sidebar can change it per layer).
+export const RASTER_OPACITY = 0.8;
+
+/** Adds a raster or GeoJSON source of geometry `kind` with optional per-layer display tweaks. */
+export function addOverlay (map, id, source, layer = {}, kind) {
 	// A saved image of the whole layer stands in for the server's tiles while zoomed out, where they are slow. The
-	// tiles' source then starts at that zoom rather than their layer, so it stays in use and keeps crediting the data
-	// provider (image sources can't carry an attribution).
+	// tiles' source then starts later rather than their layer, so it stays in use and keeps crediting the data
+	// provider (image sources can't carry an attribution). MapLibre picks raster tiles by the rounded map zoom, and
+	// 256 px tiles one zoom deeper (512 px tiles match it), so tiles of zoom maxZoom + 1 (+ 1 for 256 px) first appear at
+	// map zoom maxZoom + 0.5: the image is shown until exactly then, so the two never overlap and never leave a gap.
 	const { overview } = layer;
-	map.addSource(id, overview ? { ...source, minzoom: Math.max(source.minzoom ?? 0, overview.maxZoom) } : source);
-	// Rasters cover the whole view, so they go under the basemap labels and stay a bit see-through.
-	if (source.type === 'raster') {
-		const below = map.getStyle().layers.find((l) => l.type === 'symbol')?.id, paint = { 'raster-opacity': 0.8 };
+	const tilesFrom = overview && overview.maxZoom + 1 + Math.log2(512 / (source.tileSize ?? 512));
+	map.addSource(id, overview ? { ...source, minzoom: Math.max(source.minzoom ?? 0, tilesFrom) } : source);
+	overlayLayers.set(id, layer);
+	const rank = KIND_RANKS[kind] ?? 0;
+	overlayRanks.set(id, rank);
+	// Rasters cover the whole view, so they go under the basemap labels and stay a bit see-through; map-drawn features
+	// go above the labels. Either way, under the first overlay of a higher kind.
+	const raster = source.type === 'raster';
+	const below = map.getStyle().layers.find((l) => (raster && l.type === 'symbol') || ((l.type === 'raster') === raster && rankOf(l.source) > rank))?.id;
+	if (raster) {
+		const paint = { 'raster-opacity': RASTER_OPACITY };
 		if (overview) {
 			const [w, s, e, n] = overview.bounds;
 			map.addSource(`${id}:overview`, { type: 'image', url: overview.url, coordinates: [[w, n], [e, n], [e, s], [w, s]] });
-			map.addLayer({ id: `${id}:overview`, type: 'raster', source: `${id}:overview`, maxzoom: overview.maxZoom, paint }, below);
+			map.addLayer({ id: `${id}:overview`, type: 'raster', source: `${id}:overview`, maxzoom: overview.maxZoom + 0.5, paint }, below);
 		}
 		return map.addLayer({ id, type: 'raster', source: id, paint }, below);
 	}
-	overlayLayers.set(id, layer);
 	const { color, dash, markerSize } = overlayStyle(id);
 	const kinds = {
 		fill: [isGeom('Polygon'), { 'fill-color': color, 'fill-opacity': 0.2 }],
@@ -204,7 +270,7 @@ export function addOverlay (map, id, source, layer = {}) {
 			id: `${id}:${type}`, source: id, type, filter,
 			...(Number.isFinite(layer.minZoom) && { minzoom: layer.minZoom }),
 			paint: { ...base, ...layer.paint?.[type] }
-		});
+		}, below);
 	// Icons and labels on top, for markers circles can't draw. SVGs are drawn at 2× so their edges stay sharp.
 	for (const [name, svg] of Object.entries(layer.images ?? {})) {
 		if (map.hasImage(name)) continue;
@@ -217,7 +283,12 @@ export function addOverlay (map, id, source, layer = {}) {
 			id: `${id}:symbol`, source: id, type: 'symbol',
 			...(Number.isFinite(layer.minZoom) && { minzoom: layer.minZoom }),
 			layout: layer.symbol.layout, paint: layer.symbol.paint ?? {}
-		});
+		}, below);
+}
+
+/** Sets a raster overlay's opacity (0–1), its overview image's too. */
+export function setOpacity(map, id, opacity) {
+	for (const l of [id, `${id}:overview`]) if (map.getLayer(l)) map.setPaintProperty(l, 'raster-opacity', opacity);
 }
 
 /** Makes a GeoJSON overlay show exactly `features`, removing and adding only what changed (by feature id). */
@@ -239,4 +310,5 @@ export function removeOverlay (map, id) {
 	shownFeatures.delete(id);
 	nonInteractive.delete(id);
 	overlayLayers.delete(id);
+	overlayRanks.delete(id);
 }
