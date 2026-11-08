@@ -10,7 +10,9 @@
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, layers = {}, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	let { map, url, type, title, layers = {}, part, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
+	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
 	let service = $state(), error = $state(), attempt = $state(0), loading = $state(false);
 	let on = $state({}), note = $state({}), legend = $state({}); // per layer name: checked, status text, legend image
 	const infoLayer = $derived(shownInfo?.id.startsWith(`${url}#`) && service?.layers.find((l) => `${url}#${l.name}` === shownInfo.id));
@@ -64,7 +66,7 @@
 			localStorage.setItem(STORED, JSON.stringify([...storedIds().filter((s) => s !== id), ...(enabled ? [id] : [])]));
 		} catch {}
 	}
-	const restore = untrack(() => storedIds().filter((id) => id.startsWith(`${url}#`)).map((id) => id.slice(url.length + 1)));
+	const restore = untrack(() => storedIds().filter((id) => id.startsWith(`${url}#`)).map((id) => id.slice(url.length + 1)).filter(inPart));
 
 	$effect(() => {
 		if (service) untrack(() => {
@@ -72,10 +74,11 @@
 		});
 	});
 
-	// GetCapabilities loads when the service opens, a global search needs its layers or it has layers to restore.
+	// GetCapabilities loads when the service opens, a global search needs its layers, it has layers to restore or it's in
+	// the full list (which leaves out services whose layers are all listed on top).
 	$effect(() => {
 		attempt;
-		if ((rootOpen || filterQuery.trim() || restore.length) && !service && !error && !loading) {
+		if ((rootOpen || filterQuery.trim() || restore.length || part === 'rest') && !service && !error && !loading) {
 			loading = true;
 			inspect(url, type).then(
 				(s) => (service = s, loading = false),
@@ -90,12 +93,13 @@
 	const titlePrefix = (title) => title.match(/^(.+?)\s+[-–—]\s*/)?.[1] ?? null;
 	const layerGroup = (l) => layers[l.name]?.group || l.title.match(/^(.+?)\s+\d{4}\s*[-–—]\s*\d{4}$/)?.[1] || titlePrefix(l.title) || l.title.match(/^(.+?)\s+\d{4}$/)?.[1] || l.title.match(/^(MTB)\s+\d+$/i)?.[1] || null;
 	const itemLabel = (l, group) => {
+		if (layers[l.name]?.label) return layers[l.name].label;
 		if (l.title.startsWith(`${group} `)) return l.title.slice(group.length).trim();
 		const match = l.title.match(/^(.+?)\s+[-–—]\s*/);
 		return match?.[1] === group ? l.title.slice(match[0].length) : l.title;
 	};
 
-	const listed = $derived((service?.layers ?? []).filter((l) => !layers[l.name]?.hide));
+	const listed = $derived((service?.layers ?? []).filter((l) => !layers[l.name]?.hide && inPart(l.name)));
 
 	const prefixCounts = $derived.by(() => {
 		const counts = {};
@@ -121,7 +125,7 @@
 			}
 		}
 		return {
-			groups: [...groups.entries()].map(([name, items]) => ({ name, items })).sort((a, b) => {
+			groups: [...groups.entries()].map(([name, items]) => ({ name, items: items.sort((a, b) => naturalOrder.compare(itemLabel(a, name), itemLabel(b, name))) })).sort((a, b) => {
 				const tail = (name) => /staništ|vrst/i.test(name) ? 1 : 0;
 				return tail(a.name) - tail(b.name) || naturalOrder.compare(a.name, b.name);
 			}),
@@ -172,9 +176,10 @@
 		try {
 			const [src, layer] = layers[name]?.wms ? await wmsSource(name) : [service, name];
 			if (!on[name]) return; // turned off while the WMS capabilities were loading
-			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize), layers[name]);
+			const kind = service.layers.find((l) => l.name === name)?.kind;
+			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize), layers[name], kind);
 			legend[name] = legendUrl(src, layer);
-			const stopQueries = layers[name]?.featureInfo && queryOnClick(map, id, src, layer, service, name);
+			const stopQueries = layers[name]?.featureInfo && queryOnClick(map, id, src, layer, service, name, kind === 'points');
 			hide[name] = () => (stopQueries?.(), removeOverlay(map, id));
 		} catch (e) {
 			note[name] = e.message;
@@ -185,7 +190,7 @@
 </script>
 
 
-{#if !filterQuery.trim() || !service || error || filtered.length}
+{#if !(part && service && !listed.length) && (!filterQuery.trim() || !service || error || filtered.length)}
 <details bind:open={rootOpen}>
 	<summary>
 		<span class:active>{title ?? service?.info.title ?? url}</span> <small>{service?.type ?? type ?? ''}</small>

@@ -33,9 +33,15 @@ let colorIds;
 let colorIndexes;
 let activeSelection; // { sourceId }
 let onSelect = () => {}; // createMap's onFeatureSelect
-// Raster overlays that answer clicks anywhere (WMS GetFeatureInfo): while one is on, the whole map shows a pointer.
-const clickableRasters = new Set();
-export const setClickable = (id, clickable) => (clickable ? clickableRasters.add(id) : clickableRasters.delete(id));
+// Raster overlays that answer clicks anywhere (WMS GetFeatureInfo): overlay id → query(point) resolving to
+// { feature, outline } or nothing. While one is on, the whole map shows a pointer.
+const clickableRasters = new Map();
+export const setClickable = (id, query) => (query ? clickableRasters.set(id, query) : clickableRasters.delete(id));
+// Overlays stack by geometry kind, points over lines over areas (and other rasters), and a click picks in that order.
+const KIND_RANKS = { lines: 1, points: 2 };
+const overlayRanks = new Map(); // overlay id → rank of its kind
+const rankOf = (source) => overlayRanks.get(source?.replace(/:overview$/, ''));
+let latestClick = 0;
 
 const isGeom = (t) => ['in', ['geometry-type'], ['literal', [t, `Multi${t}`]]];
 
@@ -106,10 +112,22 @@ export async function createMap (container, onFeatureSelect = () => {}, onLoadin
 	map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right'); // top-right holds the debug readout
 	map.addControl(new ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 	onSelect = onFeatureSelect;
-	map.on('click', (e) => {
+	map.on('click', async (e) => {
+		const click = ++latestClick;
 		const rendered = overlayFeature(map, e.point);
+		// Server-drawn layers of a higher kind are asked all at once and win in rank order, then by what's drawn on top;
+		// at an equal rank the map's own feature wins, as it's drawn above every raster.
+		const order = map.getLayersOrder();
+		const queries = [...clickableRasters]
+			.filter(([id]) => !rendered || rankOf(id) > rankOf(rendered.source))
+			.sort(([a], [b]) => rankOf(b) - rankOf(a) || order.indexOf(b) - order.indexOf(a))
+			.map(([id, query]) => [id, query(e.point).catch(() => null)]);
+		for (const [id, answer] of queries) {
+			const hit = await answer;
+			if (click !== latestClick) return; // a newer click took over
+			if (hit) return selectRemote(map, id, hit);
+		}
 		if (!rendered) return;
-		e.preventDefault(); // tells WMS layers' click queries (wms.js) that a feature was hit already
 		const f = shownFeatures.get(rendered.source)?.get(rendered.id) ?? rendered;
 		removeHighlights(map);
 		showSelection(map, f, rendered);
@@ -178,7 +196,7 @@ function removeHighlights(map) {
 }
 
 /** Selects a feature a WMS layer (overlay `sourceId`) returned: details panel, and `outline` tiles that draw it. */
-export function selectRemote(map, sourceId, feature, outline) {
+function selectRemote(map, sourceId, { feature, outline }) {
 	removeHighlights(map);
 	map.addSource(OUTLINE, outline);
 	map.addLayer({ id: OUTLINE, type: 'raster', source: OUTLINE });
@@ -212,8 +230,8 @@ export function viewBbox (map, scale = 1) {
 	return [w - dx, s - dy, e + dx, n + dy];
 }
 
-/** Adds a raster or GeoJSON source with optional per-layer display tweaks. */
-export function addOverlay (map, id, source, layer = {}) {
+/** Adds a raster or GeoJSON source of geometry `kind` with optional per-layer display tweaks. */
+export function addOverlay (map, id, source, layer = {}, kind) {
 	// A saved image of the whole layer stands in for the server's tiles while zoomed out, where they are slow. The
 	// tiles' source then starts later rather than their layer, so it stays in use and keeps crediting the data
 	// provider (image sources can't carry an attribution). MapLibre picks raster tiles by the rounded map zoom, and
@@ -223,9 +241,14 @@ export function addOverlay (map, id, source, layer = {}) {
 	const tilesFrom = overview && overview.maxZoom + 1 + Math.log2(512 / (source.tileSize ?? 512));
 	map.addSource(id, overview ? { ...source, minzoom: Math.max(source.minzoom ?? 0, tilesFrom) } : source);
 	overlayLayers.set(id, layer);
-	// Rasters cover the whole view, so they go under the basemap labels and stay a bit see-through.
-	if (source.type === 'raster') {
-		const below = map.getStyle().layers.find((l) => l.type === 'symbol')?.id, paint = { 'raster-opacity': 0.8 };
+	const rank = KIND_RANKS[kind] ?? 0;
+	overlayRanks.set(id, rank);
+	// Rasters cover the whole view, so they go under the basemap labels and stay a bit see-through; map-drawn features
+	// go above the labels. Either way, under the first overlay of a higher kind.
+	const raster = source.type === 'raster';
+	const below = map.getStyle().layers.find((l) => (raster && l.type === 'symbol') || ((l.type === 'raster') === raster && rankOf(l.source) > rank))?.id;
+	if (raster) {
+		const paint = { 'raster-opacity': 0.8 };
 		if (overview) {
 			const [w, s, e, n] = overview.bounds;
 			map.addSource(`${id}:overview`, { type: 'image', url: overview.url, coordinates: [[w, n], [e, n], [e, s], [w, s]] });
@@ -244,7 +267,7 @@ export function addOverlay (map, id, source, layer = {}) {
 			id: `${id}:${type}`, source: id, type, filter,
 			...(Number.isFinite(layer.minZoom) && { minzoom: layer.minZoom }),
 			paint: { ...base, ...layer.paint?.[type] }
-		});
+		}, below);
 	// Icons and labels on top, for markers circles can't draw. SVGs are drawn at 2× so their edges stay sharp.
 	for (const [name, svg] of Object.entries(layer.images ?? {})) {
 		if (map.hasImage(name)) continue;
@@ -257,7 +280,7 @@ export function addOverlay (map, id, source, layer = {}) {
 			id: `${id}:symbol`, source: id, type: 'symbol',
 			...(Number.isFinite(layer.minZoom) && { minzoom: layer.minZoom }),
 			layout: layer.symbol.layout, paint: layer.symbol.paint ?? {}
-		});
+		}, below);
 }
 
 /** Makes a GeoJSON overlay show exactly `features`, removing and adding only what changed (by feature id). */
@@ -279,4 +302,5 @@ export function removeOverlay (map, id) {
 	shownFeatures.delete(id);
 	nonInteractive.delete(id);
 	overlayLayers.delete(id);
+	overlayRanks.delete(id);
 }
