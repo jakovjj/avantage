@@ -165,13 +165,21 @@ export function viewBbox (map, scale = 1) {
 
 /** Adds a raster or GeoJSON source with optional per-layer display tweaks. */
 export function addOverlay (map, id, source, layer = {}) {
-	map.addSource(id, source);
+	// A saved image of the whole layer stands in for the server's tiles while zoomed out, where they are slow. The
+	// tiles' source then starts at that zoom rather than their layer, so it stays in use and keeps crediting the data
+	// provider (image sources can't carry an attribution).
+	const { overview } = layer;
+	map.addSource(id, overview ? { ...source, minzoom: Math.max(source.minzoom ?? 0, overview.maxZoom) } : source);
 	// Rasters cover the whole view, so they go under the basemap labels and stay a bit see-through.
-	if (source.type === 'raster')
-		return map.addLayer(
-			{ id, type: 'raster', source: id, paint: { 'raster-opacity': 0.8 } },
-			map.getStyle().layers.find((l) => l.type === 'symbol')?.id
-		);
+	if (source.type === 'raster') {
+		const below = map.getStyle().layers.find((l) => l.type === 'symbol')?.id, paint = { 'raster-opacity': 0.8 };
+		if (overview) {
+			const [w, s, e, n] = overview.bounds;
+			map.addSource(`${id}:overview`, { type: 'image', url: overview.url, coordinates: [[w, n], [e, n], [e, s], [w, s]] });
+			map.addLayer({ id: `${id}:overview`, type: 'raster', source: `${id}:overview`, maxzoom: overview.maxZoom, paint }, below);
+		}
+		return map.addLayer({ id, type: 'raster', source: id, paint }, below);
+	}
 	overlayLayers.set(id, layer);
 	const { color, dash, markerSize } = overlayStyle(id);
 	const kinds = {
@@ -213,8 +221,9 @@ export function syncFeatures (map, id, features) {
 
 export function removeOverlay (map, id) {
 	if (activeSelection?.sourceId === id) clearSelection(map);
-	for (const l of map.getStyle().layers) if (l.source === id) map.removeLayer(l.id);
-	map.removeSource(id);
+	const sources = [id, `${id}:overview`];
+	for (const l of map.getStyle().layers) if (sources.includes(l.source)) map.removeLayer(l.id);
+	for (const s of sources) if (map.getSource(s)) map.removeSource(s);
 	shownFeatures.delete(id);
 	nonInteractive.delete(id);
 	overlayLayers.delete(id);
