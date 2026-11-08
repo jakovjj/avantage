@@ -5,6 +5,65 @@
 //   group        optional group title to group layers in the sidebar
 //   minZoom      minimum map zoom for displaying the layer and requesting its WFS features
 //   heatmap      WMS URL: draw the layer as the server's own rendered image (for raster-like grids too big for WFS)
+//   hide         leave the layer out of the sidebar (e.g. when the same data is shown from another service)
+//   panel        Svelte component for the details panel, given the clicked feature's `properties`
+//   loadAll      WFS: download the whole layer once whatever its size (measured, e.g. 1.35 MB gzipped), never per view
+//   images       { name: SVG markup } icons for `symbol` (drawn at half the SVG's size, for sharp edges)
+//   symbol       { layout, paint } of an extra MapLibre symbol layer on top: icons, labels
+//   snapshot     WFS: URL of a saved GetFeature response (src/lib/snapshots/) used instead of the server; see DEVELOPMENT.md
+import OdbaceniOtpad, { STATUS_COLORS } from './panels/OdbaceniOtpad.svelte';
+import Odlagaliste, { MARKERS as LANDFILL_MARKERS } from './panels/Odlagaliste.svelte';
+import odlagalistaSnapshot from './snapshots/v_odlagalista_geom.json?url';
+
+// Ready layers: designed by hand, one by one (own colours and details panel), and listed in DEVELOPMENT.md.
+// Lokacije odbačenog otpada (AZO): WFS only, dots coloured like the AZO WMS style.
+// Kilograms from "15000.00 kg, 10.00 m3" (null or zero for ~90% of the records).
+const AMOUNT = ['coalesce', ['get', 'ukupna_kolicina_otpada'], ''];
+const KG = ['to-number', ['slice', AMOUNT, 0, ['max', 0, ['index-of', ' kg', AMOUNT]]], 0];
+const ODBACENI_OTPAD = {
+	panel: OdbaceniOtpad,
+	loadAll: true, // 14,195 points: 10 MB of JSON, 1.35 MB downloaded (gzip), ~1.5 s; then never refetched
+	paint: {
+		circle: {
+			'circle-color': ['match', ['get', 'status_lokacije_otpada'], ...Object.entries(STATUS_COLORS).flat(), '#999'],
+			// Amounts span 0.5 kg … 19,000 t (median 1 t), so size follows the order of magnitude: ≤10 kg, 1 t, ≥100 t.
+			// Dots without an amount keep the plain size.
+			'circle-radius': ['case', ['>', KG, 0], ['interpolate', ['linear'], ['log10', KG], 1, 3, 3, 6, 5, 11], 5],
+			'circle-stroke-color': '#000',
+			'circle-stroke-width': 1
+		}
+	}
+};
+
+// Odlagališta otpada (AZO): WFS only, markers and names like the AZO WMS style (a triangle for active landfills,
+// so the markers are icons rather than circles), sized by the deposited amount.
+// Tonnes span 200 … 9.7 million (median 16,000), so size follows the order of magnitude: ≤100 t, 10,000 t, ≥10 Mt.
+// The 16 landfills without an amount keep the WMS size.
+const TONNES = ['to-number', ['get', 'kolicina_odlozenog_otpada'], 0];
+const LANDFILL_SIZE = ['case', ['>', TONNES, 0], ['interpolate', ['linear'], ['log10', TONNES], 2, 0.7, 4, 1, 7, 2.2], 1];
+const ODLAGALISTA = {
+	panel: Odlagaliste,
+	// 317 points, 292 KB of JSON (28 KB gzipped), but the server takes ~11 s to start answering.
+	snapshot: odlagalistaSnapshot,
+	images: Object.fromEntries(Object.entries(LANDFILL_MARKERS).map(([status, svg]) => [`odlagaliste-${status}`, svg])),
+	paint: { circle: { 'circle-radius': 0, 'circle-stroke-width': 0 } }, // the icons replace the default dots
+	symbol: {
+		layout: {
+			'icon-image': ['concat', 'odlagaliste-', ['get', 'status_operativnosti']],
+			'icon-size': LANDFILL_SIZE,
+			'icon-allow-overlap': true,
+			'symbol-sort-key': ['-', TONNES], // big landfills first: drawn under the small ones, named first
+			'text-field': ['get', 'naziv_odlagalista'],
+			'text-font': ['Noto Sans Bold'],
+			'text-size': 11,
+			'text-variable-anchor': ['left'],
+			'text-radial-offset': ['+', 0.4, ['*', 0.65, LANDFILL_SIZE]], // clear of the marker at any size (in ems)
+			'text-max-width': 10,
+			'text-optional': true // a name that collides is dropped, its marker stays
+		},
+		paint: { 'text-color': 'rgba(0, 0, 0, 0.8)', 'text-halo-color': 'rgba(255, 255, 255, 0.7)', 'text-halo-width': 1.5 }
+	}
+};
 
 // Habitat class colours by NKS top level (A–K), from the `nks1_style` property.
 const NKS_COLOR = ['match', ['get', 'nks1_style'],
@@ -93,8 +152,18 @@ const HABITAT_2016_DETAILS = {
 };
 
 export default [
-	{ title: 'Otpad (AZO)', type: 'WMS', url: 'https://servisi.azo.hr/otpad/wms?request=GetCapabilities' },
-	{ title: 'Otpad – objekti (AZO)', type: 'WFS', url: 'https://servisi.azo.hr/otpad/wfs' },
+	{
+		title: 'Otpad (AZO)',
+		type: 'WMS',
+		url: 'https://servisi.azo.hr/otpad/wms?request=GetCapabilities',
+		layers: { odbaceni_otpad: { hide: true }, v_odlagalista_geom: { hide: true } }
+	},
+	{
+		title: 'Otpad – objekti (AZO)',
+		type: 'WFS',
+		url: 'https://servisi.azo.hr/otpad/wfs',
+		layers: { 'otpad:odbaceni_otpad': ODBACENI_OTPAD, 'otpad:v_odlagalista_geom': ODLAGALISTA }
+	},
 	{
 		title: 'Bioportal',
 		type: 'WFS',

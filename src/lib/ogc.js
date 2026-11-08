@@ -1,6 +1,6 @@
 // OGC services (WMS / WFS / WMTS): capabilities introspection and MapLibre source specs.
 import { WfsEndpoint, WmsEndpoint, WmtsEndpoint } from '@camptocamp/ogc-client';
-import { escapeHtml, fetchText } from './utils.js';
+import { escapeHtml, fetchText, track } from './utils.js';
 
 const ENDPOINTS = { WMS: WmsEndpoint, WFS: WfsEndpoint, WMTS: WmtsEndpoint };
 // WMS servers render each tile on request (~0.3-1 s), so bigger tiles mean 4x fewer requests and a less patchy map.
@@ -57,11 +57,42 @@ async function sampleKinds(endpoint, kinds) {
 	return kinds;
 }
 
+const words = (s) => new Set(s?.toLowerCase().match(/[\p{L}\d]+/gu) ?? []);
+
+/**
+ * Public page of a metadata record. Layers link to GeoNetwork catalogues (the national NIPP geoportal) by URLs that
+ * need a login or are plain http, while the catalogue's own record page works. The records themselves can't be read
+ * from a browser: NIPP sends its CORS header twice ("*, *"), which browsers reject.
+ */
+function recordPage(url) {
+	const u = new URL(url);
+	const id = u.searchParams.get('uuid') ?? u.searchParams.get('id');
+	const catalogue = u.pathname.match(/^\/[^/]+\/srv\//)?.[0];
+	return id && catalogue ? `https://${u.host}${catalogue}hrv/catalog.search#/metadata/${id}` : url;
+}
+
+/**
+ * Official description of a layer, or null: its own abstract when that says something (most servers repeat the
+ * title, "null", or the service's abstract), with the page of a metadata record it links to, if any.
+ */
+function about({ title, abstract, metadata }, serviceAbstract) {
+	const known = words(title);
+	if (!abstract || abstract === serviceAbstract || [...words(abstract)].filter((w) => !known.has(w)).length < 3) return null;
+	const record = metadata?.[0]?.url;
+	return { text: abstract.trim(), record: record && recordPage(record) };
+}
+
 function listLayers(type, endpoint, kinds) {
+	const serviceAbstract = endpoint.getServiceInfo().abstract;
 	if (type === 'WFS')
-		return endpoint.getFeatureTypes().map((f) => ({ name: f.name, title: f.title || f.name, kind: kinds[f.name.split(':').pop()] }));
+		return endpoint.getFeatureTypes().map((f) => ({
+			name: f.name, title: f.title || f.name, kind: kinds[f.name.split(':').pop()],
+			about: about(endpoint.getFeatureTypeSummary(f.name) ?? f, serviceAbstract)
+		}));
 	if (type === 'WMTS') return endpoint.getLayers().map((l) => ({ name: l.name, title: l.name, kind: 'raster' }));
-	return endpoint.getFlattenedLayers().filter((l) => l.name).map((l) => ({ name: l.name, title: l.title || l.name, kind: 'raster' }));
+	return endpoint.getFlattenedLayers().filter((l) => l.name).map((l) => ({
+		name: l.name, title: l.title || l.name, kind: 'raster', about: about(endpoint.getLayerByName(l.name) ?? l, serviceAbstract)
+	}));
 }
 
 /** Reads GetCapabilities; without a known type, tries each service type in turn. */
@@ -69,7 +100,7 @@ export async function inspect(url, type = guessType(url)) {
 	const errors = [];
 	for (const t of type ? [type] : Object.keys(ENDPOINTS)) {
 		try {
-			let [endpoint, kinds] = await Promise.all([new ENDPOINTS[t](url).isReady(), t === 'WFS' ? wfsKinds(url) : {}]);
+			let [endpoint, kinds] = await Promise.all([track(new ENDPOINTS[t](url).isReady()), t === 'WFS' ? wfsKinds(url) : {}]);
 			if (t === 'WFS') kinds = await sampleKinds(endpoint, kinds);
 			const capabilitiesUrl = endpoint.getCapabilitiesUrl?.() ?? url; // WmtsEndpoint lacks it
 			return { type: t, endpoint, capabilitiesUrl, info: endpoint.getServiceInfo(), layers: listLayers(t, endpoint, kinds) };
@@ -114,10 +145,13 @@ function wmtsTiles(endpoint, name) {
 	throw new Error('Sloj nema EPSG:3857 mrežu pločica');
 }
 
-/** WFS layer features (GeoJSON, WGS84), optionally inside bbox [w, s, e, n]; null if over maxBytes. */
+/**
+ * WFS layer features (GeoJSON, WGS84), optionally inside bbox [w, s, e, n]; null if over maxBytes.
+ * Only a view (bbox) is capped at MAX_FEATURES; a whole layer is all or nothing, limited by maxBytes.
+ */
 export async function getFeatures({ endpoint }, name, { bbox, maxBytes, signal } = {}) {
 	const url = endpoint.getFeatureUrl(name, {
-		asJson: true, outputCrs: 'EPSG:4326', maxFeatures: MAX_FEATURES, extent: bbox, extentCrs: 'EPSG:4326'
+		asJson: true, outputCrs: 'EPSG:4326', maxFeatures: bbox ? MAX_FEATURES : undefined, extent: bbox, extentCrs: 'EPSG:4326'
 	});
 	const text = await fetchText(url, { maxBytes, signal });
 	if (text === null) return null;
