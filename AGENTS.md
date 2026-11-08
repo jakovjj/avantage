@@ -78,6 +78,8 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 - Rendered as 512 px raster tiles (`WMS_TILE`; servers render each tile on request, so fewer bigger tiles load
   faster) in EPSG:3857 using the `{bbox-epsg-3857}` template; the browser and MapLibre cache tiles, so don't replace
   tiles with a single per-view image. Rasters sit under the basemap labels at 0.8 opacity.
+- Not every server is faster with 512 px: measure. Bioportal's sensitivity maps take ~7 s per 512 px tile of
+  Croatia but ~1.2 s per 256 px one, so they use `tileSize: 256` (all of Croatia 6.8 s → 4.4 s).
 - `wmsZooms` turns the layer's `Min/MaxScaleDenominator` into the source's `minzoom`/`maxzoom`, so MapLibre skips
   empty requests and **enlarges the last real tiles** beyond the server's limit (e.g. Hrvatske vode flood maps).
   Remember: for 512 px tiles, MapLibre requests tile zoom ≈ map zoom.
@@ -106,6 +108,14 @@ Keep these to what cannot be inferred automatically. Supported keys:
   can't draw, e.g. triangles) and labels (`text-font` must be a basemap font: `Noto Sans Regular/Bold/Italic`).
 - `snapshot` — WFS only: URL (`import … from './snapshots/<layer>.json?url'`) of a saved GetFeature response, loaded
   whole instead of asking the server. For small layers whose server is very slow. See Snapshots.
+- `tileSize` — WMS tile size in px (default 512).
+- `exclusive` — key shared by layers of which only one may be on: turning one on turns the others off (the 11
+  Bioportal sensitivity maps, which cover all of Croatia, share `group: 'Osjetljivost'` and `exclusive`). They keep
+  checkboxes, so the active one can still be turned off.
+- `overview` — WMS: `{ url, bounds: [w, s, e, n], maxZoom }`, a saved image of the whole layer (`./snapshots/*.png?url`)
+  shown below `maxZoom` instead of the server's tiles, for layers the server renders very slowly when zoomed out. The
+  tiles' source starts at `maxZoom` (not their layer), so it stays in use and the provider stays credited. See
+  Snapshots.
 
 New tweak types must be generic (applied by `map.js`/`wfs.js`/`Source.svelte`/the page), not special-cased per
 source in code.
@@ -130,7 +140,7 @@ asks; every other layer keeps the automatic defaults. Add a layer here when the 
 ## Snapshots
 
 A snapshot replaces a slow WFS request with a copy of its response in `src/lib/snapshots/`, built into the app and
-served gzipped by nginx. The layer still appears under its service (GetCapabilities and the attribution come from the
+served gzipped by nginx (a WMS `overview` image likewise replaces the zoomed-out tiles). The layer still appears under its service (GetCapabilities and the attribution come from the
 server); only its features come from the file. Snapshots go stale: **refresh them from time to time**, and whenever
 the user asks, by downloading the same request the app would make and replacing the file unchanged:
 
@@ -140,9 +150,25 @@ curl -o src/lib/snapshots/v_odlagalista_geom.json "https://servisi.azo.hr/otpad/
 
 The file's `timeStamp` field says when it was taken. Then check the app (markers, details) and commit.
 
+An `overview` image is a WMS GetMap of the layer's `bounds` (here 13.4–19.55° E, 42.3–46.6° N) in EPSG:3857, at the
+resolution of `maxZoom` (zoom 8: 305.75 m/px → 2239 × 2195 px), as an 8-bit PNG (0.75–1 MB). Bioportal needs 8–25
+s per image. The `BBOX` is those bounds in Web Mercator metres; changing `bounds` or `maxZoom` means recomputing it and the
+size:
+
+```bash
+for l in ocjena_priroda_solar ocjena_priroda_vjetar osjetljivost_stanista ascii_osjetljivost_sismisi_solar_import ascii_osjetljivost_sismisi_vjetar ascii_osjetljivost_vrsta_solar ascii_osjetljivost_vrsta_vjetar; do curl -o src/lib/snapshots/$l.png "https://services.bioportal.hr/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image/png8&TRANSPARENT=TRUE&CRS=EPSG:3857&STYLES=&LAYERS=$l&BBOX=1491681.18,5206024.46,2176296.05,5877026.55&WIDTH=2239&HEIGHT=2195"; done
+```
+
 | File | Layer | Taken |
 |---|---|---|
 | `v_odlagalista_geom.json` | AZO Odlagališta otpada | 2026-11-08 |
+| `ocjena_priroda_solar.png` | Bioportal Karta osjetljivosti prirode - solar (overview) | 2026-11-08 |
+| `ocjena_priroda_vjetar.png` | Bioportal Karta osjetljivosti prirode - vjetar (overview) | 2026-11-08 |
+| `osjetljivost_stanista.png` | Bioportal Osjetljivost staništa (overview) | 2026-11-08 |
+| `ascii_osjetljivost_sismisi_solar_import.png` | Bioportal Osjetljivost šišmiši - solar (overview) | 2026-11-08 |
+| `ascii_osjetljivost_sismisi_vjetar.png` | Bioportal Osjetljivost šišmiši - vjetar (overview) | 2026-11-08 |
+| `ascii_osjetljivost_vrsta_solar.png` | Bioportal Osjetljivost skupno - solar (overview) | 2026-11-08 |
+| `ascii_osjetljivost_vrsta_vjetar.png` | Bioportal Osjetljivost skupno - vjetar (overview) | 2026-11-08 |
 
 ## Adding a built-in service
 
