@@ -96,6 +96,18 @@ export async function createMap (container, onFeatureSelect = () => {}) {
 	return new Promise((resolve) => map.once('load', () => resolve(map)));
 }
 
+/** Moves the map to a selected place, fitting its bounds when available. */
+export function flyToCoordinates (map, coordinates, extent) {
+	if (extent?.length === 4 && extent.every(Number.isFinite)) {
+		map.fitBounds(
+			[[Math.min(extent[0], extent[2]), Math.min(extent[1], extent[3])], [Math.max(extent[0], extent[2]), Math.max(extent[1], extent[3])]],
+			{ padding: 60, maxZoom: 15 }
+		);
+		return;
+	}
+	map.flyTo({ center: coordinates, zoom: 15 });
+}
+
 function showSelection(map, feature) {
 	const source = map.getSource(SELECTION_SOURCE);
 	const data = {
