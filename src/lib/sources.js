@@ -19,6 +19,7 @@
 import OdbaceniOtpad, { STATUS_COLORS } from './panels/OdbaceniOtpad.svelte';
 import Odlagaliste, { MARKERS as LANDFILL_MARKERS } from './panels/Odlagaliste.svelte';
 import Staniste2016 from './panels/Staniste2016.svelte';
+import Staniste2004 from './panels/Staniste2004.svelte';
 import odlagalistaSnapshot from './snapshots/v_odlagalista_geom.json?url';
 import natureSolar from './snapshots/ocjena_priroda_solar.png?url';
 import natureWind from './snapshots/ocjena_priroda_vjetar.png?url';
@@ -140,12 +141,14 @@ const PROTECTED_AREA_DETAILS = {
 	]
 };
 
-const HABITAT_2004_DETAILS = {
-	fields: [
-		{ keys: ['nks_ime'], label: 'Stanišni tip' },
-		{ keys: ['nks_kod'], label: 'NKS šifra' }
-	]
-};
+// Karta staništa 2004: 9 layers, one panel. The big ones (land polygons 60,555 ≈ 60 MB, watercourses 22,859 lines,
+// rocks and screes 22,420, sea coast 5,305, sea bottom 3,485 polygons) are drawn by the WMS (512 px tiles: ≤1.9 s for
+// Croatia, ≤0.5 s zoomed in) and clicked via GetFeatureInfo; points, underground and inland waters stay WFS (≤1,121).
+// Both habitat maps share one sidebar section ("2004 - …", "2016 - …"), and only one of their land polygon layers can be
+// on: they cover the same ground.
+const HABITATS = 'Karta staništa';
+const HABITAT_2004 = { panel: Staniste2004, group: HABITATS };
+const HABITAT_2004_WMS = { ...HABITAT_2004, wms: BIOPORTAL_WMS, featureInfo: true };
 
 export default [
 	{
@@ -180,14 +183,23 @@ export default [
 			'dzzpnpis:saproksilni_kornjasi_dojave_2019': { details: BEETLE_DETAILS },
 			'dzzpnpis:zasticeno_podrucje_poligoni': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:zasticeno_podrucje_tocke': { details: PROTECTED_AREA_DETAILS },
-			'dzzpnpis:kopnena_stanista': { details: HABITAT_2004_DETAILS },
+			'dzzpnpis:kopnena_stanista': { ...HABITAT_2004_WMS, exclusive: 'kopnena staništa' },
+			'dzzpnpis:vodotoci': HABITAT_2004_WMS,
+			'dzzpnpis:stijene_tocila': HABITAT_2004_WMS,
+			'dzzpnpis:morska_obala': HABITAT_2004_WMS,
+			'dzzpnpis:morski_bentos': HABITAT_2004_WMS,
+			'dzzpnpis:kopnena_stanista_tocke': HABITAT_2004,
+			'dzzpnpis:kopnene_vode': HABITAT_2004,
+			'dzzpnpis:morski_bentos_tocke': HABITAT_2004,
+			'dzzpnpis:podzemlje': HABITAT_2004,
 			// 322,906 polygons (one city view ~8 MB as WFS): drawn by the WMS in its own colours, and a click asks the
 			// WMS for the polygon there (~0.3 s). 512 px tiles per view: 4.3 s for Croatia, 2.4 s at zoom 8.5, 1.1 s at 9.5,
 			// ~0.6 s from 10 (256 px is slower from zoom 9), so a saved image until zoom 8.5.
 			'dzzpnpis:kopnena_stanista_2016': {
-				panel: Staniste2016, wms: BIOPORTAL_WMS, featureInfo: true,
+				panel: Staniste2016, wms: BIOPORTAL_WMS, featureInfo: true, group: HABITATS, exclusive: 'kopnena staništa',
 				overview: { url: habitats2016, bounds: OVERVIEW_BOUNDS, maxZoom: 8 }
 			},
+			'dzzpnpis:kopnena_stanista_tocke_2016': { group: HABITATS },
 			'dzzpnpis:ascii_osjetljivost_ptice_solar': HEATMAP,
 			'dzzpnpis:ascii_osjetljivost_ptice_vjetar': HEATMAP,
 			'dzzpnpis:ascii_osjetljivost_vrsta_solar': WITH_OVERVIEW(groupSolar),

@@ -7,6 +7,11 @@ import { simplify, track } from './utils.js';
 // MapLibre resolves its worker next to itself, which breaks once Vite bundles it.
 setWorkerUrl(workerUrl);
 
+// Dev only: this module's state (selection callback, clickable layers, shown features) belongs to the live map, so a
+// hot swap would leave the open page half-connected (no details panel, no pointer). Reload the page instead
+// (Vite's decline() is a no-op).
+if (import.meta.hot) import.meta.hot.accept(() => location.reload());
+
 const COLORS = [
 	'#4e79a7', '#f28e2b', '#e15759', '#76b7b2', '#59a14f', '#edc949', '#af7aa1', '#ff9da7',
 	'#9c755f', '#bab0ab', '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', '#8c564b',

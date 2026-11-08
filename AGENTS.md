@@ -155,6 +155,16 @@ asks; every other layer keeps the automatic defaults. Add a layer here when the 
   `nks_stari` repeat the codes, `*_style` are the class letters for map colours, `shape_*` repeat the area.
   Panel `Staniste2016.svelte`: the types, each with a swatch in the WMS style's colour for its class letter, the main
   one large, then the area in ha.
+- Both habitat maps share one sidebar section, `group: 'Karta staništa'` (rows "2004 - …", "2016 - …"), and their land
+  polygon layers share `exclusive`, since they cover the same ground.
+- **Karta staništa 2004** (Bioportal, 9 layers) — the 5 big ones are drawn by the WMS with `featureInfo` (land
+  polygons `kopnena_stanista` 60,555 ≈ 60 MB, `vodotoci` 22,859 lines, `stijene_tocila` 22,420, `morska_obala` 5,305,
+  `morski_bentos` 3,485 polygons; 512 px tiles ≤1.9 s for Croatia, no overview needed); the points, `podzemlje` and
+  `kopnene_vode` (≤1,121 features) stay WFS. Fields: `nks_kod` (space-padded) and `nks_ime`, combinations joined
+  with "/" (names sometimes " / "; 663 coast lines have no name, 2 inland waters one name for 4 codes); `style`
+  repeats them, `tip` names the layer, `id_rel`/`fid` are internal. Panel `Staniste2004.svelte` for all 9: layer,
+  then each type (name, code), names and codes paired only when they match up. The WMS style colours 109 codes
+  separately, so no class swatches. Clicks on lines hit within a few px (GeoServer's default buffer).
 
 ## Snapshots
 
@@ -240,6 +250,10 @@ for l in kopnena_stanista_2016 ocjena_priroda_solar ocjena_priroda_vjetar osjetl
 ## Known pitfalls
 
 - MapLibre 6 must get its worker via `setWorkerUrl(...?url)` in `map.js`; without it the map is blank after bundling.
+- `map.js` holds state tied to the live map (selection callback, clickable layers, shown features). A dev hot swap of
+  it left the open page without details panel or pointer, so it accepts its own updates by reloading the page
+  (`import.meta.hot.accept(() => location.reload())`; Vite's `decline()` is a no-op). When testing in the browser,
+  still reload after edits elsewhere before trusting what you see.
 - `vite.config.js` marks `ol/*` external because ogc-client lazily imports OpenLayers; never call
   `getOpenLayersTileGrid` and don't add `ol`.
 - `WmtsEndpoint` has no `getCapabilitiesUrl()`; `inspect` stores `capabilitiesUrl` for all types.
