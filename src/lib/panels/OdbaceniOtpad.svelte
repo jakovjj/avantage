@@ -10,17 +10,15 @@
 <script>
 	import Viewer from 'viewerjs';
 	import 'viewerjs/dist/viewer.css';
+	import { formatNumber, titleCase } from '../utils.js';
 
 	let { properties: p } = $props();
 
-	// The server writes municipalities in capitals: "VRSAR - ORSERA" → "Vrsar - Orsera".
-	const titleCase = (s) =>
-		s.toLocaleLowerCase('hr').replace(/(^|[\s-])(\p{L})/gu, (_, before, letter) => before + letter.toLocaleUpperCase('hr'));
-	// "15000.00 kg, 0.00 m3" → "15.000 kg"; most records hold only zeros, which mean "unknown".
+	// "15000.00 kg, 0.00 m3" → "15 000 kg"; most records hold only zeros, which mean "unknown".
 	const amount = (value) =>
 		(value ?? '').split(', ').filter((part) => parseFloat(part) > 0).map((part) => {
 			const [number, unit] = part.split(' ');
-			return `${Number(number).toLocaleString('hr')} ${unit.replace('m2', 'm²').replace('m3', 'm³')}`;
+			return `${formatNumber(number)} ${unit.replace('m2', 'm²').replace('m3', 'm³')}`;
 		}).join(', ');
 
 	const place = $derived.by(() => {
@@ -100,9 +98,9 @@
 	}
 </script>
 
-<h2>Odbačeni otpad</h2>
+<h5>Odbačeni otpad</h5>
+<h2>{place}</h2>
 <p class="status"><span style:background={STATUS_COLORS[p.status_lokacije_otpada]}></span>{p.status_lokacije_otpada}</p>
-<p>{place}</p>
 {#if p.nazivi_lokacije}<p class="muted">{p.nazivi_lokacije}</p>{/if}
 <p>{p.opis_lokacije}</p>
 {#if facts.length}
@@ -124,6 +122,7 @@
 {/if}
 
 <style>
+	h5 { margin: 0 0 2px; font-size: 12px; font-weight: normal; color: #666; }
 	h2 { margin: 0 0 6px; font-size: 18px; }
 	h3 { margin: 12px 0 6px; font-size: 14px; }
 	p { margin: 0 0 8px; }

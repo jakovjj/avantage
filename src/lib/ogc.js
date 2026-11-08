@@ -1,6 +1,6 @@
 // OGC services (WMS / WFS / WMTS): capabilities introspection and MapLibre source specs.
 import { WfsEndpoint, WmsEndpoint, WmtsEndpoint } from '@camptocamp/ogc-client';
-import { escapeHtml, fetchText } from './utils.js';
+import { escapeHtml, fetchText, track } from './utils.js';
 
 const ENDPOINTS = { WMS: WmsEndpoint, WFS: WfsEndpoint, WMTS: WmtsEndpoint };
 // WMS servers render each tile on request (~0.3-1 s), so bigger tiles mean 4x fewer requests and a less patchy map.
@@ -69,7 +69,7 @@ export async function inspect(url, type = guessType(url)) {
 	const errors = [];
 	for (const t of type ? [type] : Object.keys(ENDPOINTS)) {
 		try {
-			let [endpoint, kinds] = await Promise.all([new ENDPOINTS[t](url).isReady(), t === 'WFS' ? wfsKinds(url) : {}]);
+			let [endpoint, kinds] = await Promise.all([track(new ENDPOINTS[t](url).isReady()), t === 'WFS' ? wfsKinds(url) : {}]);
 			if (t === 'WFS') kinds = await sampleKinds(endpoint, kinds);
 			const capabilitiesUrl = endpoint.getCapabilitiesUrl?.() ?? url; // WmtsEndpoint lacks it
 			return { type: t, endpoint, capabilitiesUrl, info: endpoint.getServiceInfo(), layers: listLayers(t, endpoint, kinds) };
