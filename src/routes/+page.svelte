@@ -11,6 +11,7 @@
 	let selectedFeature = $state(null);
 	let custom = $state(loadCustom());
 	let url = $state('');
+	let showAddForm = $state(false);
 	let resets = $state(0); // bumped by the reset button, see Source.svelte
 	let cursor = $state(), zoom = $state(); // debug readout
 	let issues = $state([]), activeIssue = $state();
@@ -72,14 +73,19 @@
 			<h1>Avantage</h1>
 			<button onclick={() => resets++}>Resetiraj</button>
 		</header>
-		<form onsubmit={add}>
-			<input type="url" bind:value={url} placeholder="WMS / WFS / WMTS URL" required />
-			<button>Dodaj</button>
-		</form>
 		{#if map}
 			{#each SOURCES as source}<Source {map} {...source} reset={resets} onLimit={reportLimit} />{/each}
 			{#each custom as source (source)}<Source {map} {...source} reset={resets} onLimit={reportLimit} onremove={() => remove(source)} />{/each}
 		{/if}
+		<div class="manual-options">
+			<label class="manual-toggle"><input type="checkbox" bind:checked={showAddForm} /> Dodaj ručno slojeve</label>
+			{#if showAddForm}
+				<form onsubmit={add}>
+					<input type="url" bind:value={url} placeholder="WMS / WFS / WMTS URL" required />
+					<button>Dodaj</button>
+				</form>
+			{/if}
+		</div>
 	</aside>
 	<main bind:this={container}>
 		{#if issues.find((issue) => issue.id === activeIssue)}
@@ -104,13 +110,16 @@
 <style>
 	:global(body) { margin: 0; height: 100dvh; font: 14px system-ui, sans-serif; color-scheme: light; background: #fff; color: #222; }
 	.layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: 100%; }
-	.sidebar { overflow-y: auto; padding: 0 16px 16px; border-right: 1px solid #ddd; }
+	.sidebar { display: flex; flex-direction: column; overflow-y: auto; padding: 0 16px 16px; border-right: 1px solid #ddd; }
 	/* Overlays the map: resizing the map container would move and re-centre the map. */
 	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; z-index: 10; overflow-y: auto; padding: 12px; border-left: 1px solid #ddd; background: #fff; }
 	header { display: flex; justify-content: space-between; align-items: center; }
 	h1 { font-size: 20px; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
 	input { flex: 1; min-width: 0; }
+	.manual-toggle { display: flex; align-items: center; gap: 6px; margin: 12px 0; }
+	.manual-toggle input { flex: none; }
+	.manual-options { margin-top: auto; }
 	main { position: relative; min-width: 0; min-height: 0; }
 	.limit-warning { position: absolute; z-index: 2; top: 8px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100% - 160px); padding: 6px 8px; background: #fff; border: 1px solid #999; }
 	:global(.details table) { width: 100%; border-collapse: collapse; font-size: 12px; }
