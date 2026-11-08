@@ -2,6 +2,7 @@ import { MapLibreMap, NavigationControl, ScaleControl, setWorkerUrl } from 'mapl
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import maskUrl from './croatia-mask.json?url';
+import { simplify } from './utils.js';
 
 // MapLibre resolves its worker next to itself, which breaks once Vite bundles it.
 setWorkerUrl(workerUrl);
@@ -56,7 +57,9 @@ const MAX_BOUNDS = [[11.5, 41.2], [21.4, 47.7]];
  * lifted above it), and labels only inside Croatia.
  */
 function croatiaStyle(style, mask) {
-	const croatia = { type: 'MultiPolygon', coordinates: mask.coordinates.slice(1).map((ring) => [ring]) };
+	// The label filter tests every label against every border point (13,846), which made drawing tiles ~3× slower;
+	// ~500 m accuracy (900 points) costs nothing noticeable. The mask itself keeps the full border.
+	const croatia = { type: 'MultiPolygon', coordinates: mask.coordinates.slice(1).map((ring) => [simplify(ring, 0.005)]) };
 	for (const source of Object.values(style.sources)) if (source.type === 'vector') source.bounds = MAX_BOUNDS.flat();
 	style.sources[MASK_SOURCE] = { type: 'geojson', data: mask };
 	nonInteractive.add(MASK_SOURCE);
