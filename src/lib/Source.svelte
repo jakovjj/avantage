@@ -1,3 +1,8 @@
+<script module>
+	// The open (i) box, one at a time across all services: { id: `${url}#${layer}`, left, top or bottom } in viewport px.
+	let shownInfo = $state(null);
+</script>
+
 <script>
 	import { untrack } from 'svelte';
 	import { inspect, legendUrl, rasterSource } from './ogc.js';
@@ -7,6 +12,19 @@
 	let { map, url, type, title, layers = {}, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
 	let service = $state(), error = $state(), attempt = $state(0), loading = $state(false);
 	let on = $state({}), note = $state({}), legend = $state({}); // per layer name: checked, status text, legend image
+	const infoLayer = $derived(shownInfo?.id.startsWith(`${url}#`) && service?.layers.find((l) => `${url}#${l.name}` === shownInfo.id));
+
+	// The box opens over the map, beside the sidebar, level with the layer's row: downwards from a row in the upper half
+	// of the window, upwards from one in the lower half, so it stays on screen.
+	function toggleInfo(e, l) {
+		e.preventDefault(); // the button sits inside the layer's <label>
+		const id = `${url}#${l.name}`;
+		if (shownInfo?.id === id) return (shownInfo = null);
+		const row = e.currentTarget.getBoundingClientRect(), sidebar = e.currentTarget.closest('aside').getBoundingClientRect();
+		shownInfo = row.top < innerHeight / 2
+			? { id, left: sidebar.right + 8, top: Math.max(8, row.top - 8) }
+			: { id, left: sidebar.right + 8, bottom: Math.max(8, innerHeight - row.bottom - 8) };
+	}
 	let rootOpen = $state(untrack(() => open));
 	let groupOpen = $state({});
 	let searchSnapshot;
@@ -188,6 +206,25 @@
 </details>
 {/if}
 
+{#if infoLayer}
+	<!-- Official information only: the layer's own abstract, then its metadata record, else where the text came from. -->
+	<div class="info-box" style:left="{shownInfo.left}px" style:top={shownInfo.top && `${shownInfo.top}px`} style:bottom={shownInfo.bottom && `${shownInfo.bottom}px`} data-info>
+		<strong>{infoLayer.title}</strong>
+		<p>{infoLayer.about.text}</p>
+		{#if infoLayer.about.record}
+			<a href={infoLayer.about.record} target="_blank" rel="noreferrer">Više
+				<svg class="external" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><title>otvara se u novoj kartici</title><path d="M5 2H2v8h8V7M7 2h3v3M10 2L5.5 6.5" /></svg></a>
+		{:else}
+			<a href={service.capabilitiesUrl} target="_blank" rel="noreferrer">{service.type} endpoint</a>
+		{/if}
+	</div>
+{/if}
+<!-- A click outside the box or its (i), or Escape, closes it. -->
+<svelte:window
+	onclick={(e) => !e.target.closest('[data-info]') && (shownInfo = null)}
+	onkeydown={(e) => e.key === 'Escape' && (shownInfo = null)}
+/>
+
 {#snippet row(l, text)}
 	{@const [kind, icon] = KINDS[kindOf(l)] ?? []}
 	<label>
@@ -197,6 +234,11 @@
 			<small>{note[l.name] ?? ''}</small>
 		</span>
 		{#if icon}<svg viewBox="0 0 12 12" fill="currentColor"><title>{kind}</title>{@html icon}</svg>{/if}
+		{#if l.about}
+			<button class="info" class:open={shownInfo?.id === `${url}#${l.name}`} onclick={(e) => toggleInfo(e, l)} title="Informacije" data-info>
+				<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="6" cy="6" r="5.2" /><path d="M6 5.2V9M6 3v.9" /></svg>
+			</button>
+		{/if}
 	</label>
 	{#if on[l.name] && legend[l.name]}<img src={legend[l.name]} alt="" />{/if}
 {/snippet}
@@ -212,7 +254,14 @@
 	label { display: flex; gap: 6px; align-items: baseline; padding: 3px 0 3px 12px; cursor: pointer; }
 	a, img, small, pre + button { display: block; margin: 0 0 6px 12px; }
 	label small, summary small { display: inline; margin: 0; }
-	svg { flex: none; align-self: center; width: 14px; height: 14px; margin-left: auto; color: #777; }
+	label > span { flex: 1; }
+	svg { flex: none; align-self: center; width: 14px; height: 14px; color: #777; }
+	.info { display: flex; align-self: center; padding: 0; border: 0; background: none; cursor: pointer; }
+	.info.open svg { color: #222; }
+	.info-box { position: fixed; z-index: 15; box-sizing: border-box; width: 300px; max-height: calc(100dvh - 16px); overflow-y: auto; padding: 10px 12px; border: 1px solid #999; background: #fff; font-size: 13px; }
+	.info-box p { margin: 6px 0; white-space: pre-line; }
+	.info-box a { display: inline-flex; align-items: center; gap: 3px; margin: 0; }
+	.info-box .external { width: 11px; height: 11px; color: inherit; }
 	small, a { color: #666; font-size: 12px; }
 	pre { white-space: pre-wrap; color: #b00; font-size: 12px; }
 </style>

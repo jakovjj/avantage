@@ -164,6 +164,12 @@ The file's `timeStamp` field says when it was taken. Then check the app (markers
 - Sidebar: `Avantage` title, the URL form, then one `<details>` per service. A service links to its
   GetCapabilities document with the text **`<TYPE> endpoint`** (e.g. "WFS endpoint"), nothing more.
 - The data provider (from GetCapabilities) is credited in the MapLibre attribution, not in the sidebar.
+- A layer row has an (i) after its type icon only when GetCapabilities gives an **official** description (`about` in
+  `ogc.js`): an abstract that says more than the title (not the title again, "null", or the service's abstract); a
+  metadata link alone isn't enough. It opens a box over the map, beside the sidebar and level with the row (one at a
+  time; a click outside or Escape closes it): the layer's title, that text and "Više" with a new-tab icon linking to
+  the metadata record (NIPP geoportal page), otherwise a "`<TYPE>` endpoint" link. Never write our own texts there. The NIPP records can't be read from the browser (the
+  geoportal sends `Access-Control-Allow-Origin: *, *`, which browsers reject), so they are only linked.
 - Numbers shown to users go through `formatNumber` (`utils.js`): thousands split by a thin space ("9 700 000"),
   **never a dot or comma** (they read as decimals); the decimal mark is a comma ("0,3").
 - Details panel (right): a ready layer's own `panel`, otherwise the properties table. A panel starts with a small
