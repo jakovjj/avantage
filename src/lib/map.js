@@ -230,6 +230,9 @@ export function viewBbox (map, scale = 1) {
 	return [w - dx, s - dy, e + dx, n + dy];
 }
 
+// Rasters cover the whole view, so they stay a bit see-through (the sidebar can change it per layer).
+export const RASTER_OPACITY = 0.8;
+
 /** Adds a raster or GeoJSON source of geometry `kind` with optional per-layer display tweaks. */
 export function addOverlay (map, id, source, layer = {}, kind) {
 	// A saved image of the whole layer stands in for the server's tiles while zoomed out, where they are slow. The
@@ -248,7 +251,7 @@ export function addOverlay (map, id, source, layer = {}, kind) {
 	const raster = source.type === 'raster';
 	const below = map.getStyle().layers.find((l) => (raster && l.type === 'symbol') || ((l.type === 'raster') === raster && rankOf(l.source) > rank))?.id;
 	if (raster) {
-		const paint = { 'raster-opacity': 0.8 };
+		const paint = { 'raster-opacity': RASTER_OPACITY };
 		if (overview) {
 			const [w, s, e, n] = overview.bounds;
 			map.addSource(`${id}:overview`, { type: 'image', url: overview.url, coordinates: [[w, n], [e, n], [e, s], [w, s]] });
@@ -281,6 +284,11 @@ export function addOverlay (map, id, source, layer = {}, kind) {
 			...(Number.isFinite(layer.minZoom) && { minzoom: layer.minZoom }),
 			layout: layer.symbol.layout, paint: layer.symbol.paint ?? {}
 		}, below);
+}
+
+/** Sets a raster overlay's opacity (0–1), its overview image's too. */
+export function setOpacity(map, id, opacity) {
+	for (const l of [id, `${id}:overview`]) if (map.getLayer(l)) map.setPaintProperty(l, 'raster-opacity', opacity);
 }
 
 /** Makes a GeoJSON overlay show exactly `features`, removing and adding only what changed (by feature id). */

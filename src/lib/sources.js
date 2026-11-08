@@ -92,7 +92,7 @@ const BIOPORTAL_WMS = 'https://services.bioportal.hr/wms';
 // Bioportal renders them slowly when zoomed out (a 512 px tile of Croatia takes ~7 s, a 256 px one ~1.2 s;
 // all of Croatia 6.8 s vs 4.4 s), so they use 256 px tiles.
 // They cover all of Croatia, so they share one sidebar section and only one is shown at a time.
-const HEATMAP = { ready: true, wms: BIOPORTAL_WMS, heatmap: true, tileSize: 256, group: 'Osjetljivost', exclusive: 'osjetljivost' };
+const HEATMAP = { ready: true, opacity: true, wms: BIOPORTAL_WMS, heatmap: true, tileSize: 256, group: 'Osjetljivost', exclusive: 'osjetljivost' };
 // The slow ones (all of Croatia at zoom 7 in 256 px tiles: prirode 4.5 s, staništa 3.6 s, šišmiši 2.5 s, skupno
 // 1.9–2.5 s; ptice 1.6 s and velike zvijeri 0.5 s stay live) show a saved image of all of Croatia until zoom 8.5 (zoom 8
 // sharpness, 8–25 s for the server to render) instead of the tiles. See Snapshots in DEVELOPMENT.md.
@@ -196,11 +196,11 @@ export default [
 			'dzzpnpis:saproksilni_kornjasi_dojave_2019': { details: BEETLE_DETAILS },
 			'dzzpnpis:zasticeno_podrucje_poligoni': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:zasticeno_podrucje_tocke': { details: PROTECTED_AREA_DETAILS },
-			'dzzpnpis:kopnena_stanista': { ...HABITAT_2004_WMS, exclusive: 'kopnena staništa' },
+			'dzzpnpis:kopnena_stanista': { ...HABITAT_2004_WMS, exclusive: 'kopnena staništa', opacity: true },
 			'dzzpnpis:vodotoci': HABITAT_2004_WMS,
 			'dzzpnpis:stijene_tocila': HABITAT_2004_WMS,
 			'dzzpnpis:morska_obala': HABITAT_2004_WMS,
-			'dzzpnpis:morski_bentos': HABITAT_2004_WMS,
+			'dzzpnpis:morski_bentos': { ...HABITAT_2004_WMS, opacity: true },
 			'dzzpnpis:kopnena_stanista_tocke': HABITAT_2004,
 			'dzzpnpis:kopnene_vode': HABITAT_2004,
 			'dzzpnpis:morski_bentos_tocke': HABITAT_2004,
@@ -209,12 +209,12 @@ export default [
 			// WMS for the polygon there (~0.3 s). 512 px tiles per view: 4.3 s for Croatia, 2.4 s at zoom 8.5, 1.1 s at 9.5,
 			// ~0.6 s from 10 (256 px is slower from zoom 9), so a saved image until zoom 8.5.
 			'dzzpnpis:kopnena_stanista_2016': {
-				ready: true, panel: Staniste2016, wms: BIOPORTAL_WMS, featureInfo: true, group: HABITATS, exclusive: 'kopnena staništa',
+				ready: true, opacity: true, panel: Staniste2016, wms: BIOPORTAL_WMS, featureInfo: true, group: HABITATS, exclusive: 'kopnena staništa',
 				overview: { url: habitats2016, bounds: OVERVIEW_BOUNDS, maxZoom: 8 }
 			},
 			'dzzpnpis:kopnena_stanista_tocke_2016': { group: HABITATS },
 			'dzzpnpis:morska_stanista_p_1_1': {
-				...MARINE_2023, label: '2023 - more - poligoni', overview: { url: marinePolygons, bounds: OVERVIEW_BOUNDS, maxZoom: 8 }
+				...MARINE_2023, label: '2023 - more - poligoni', opacity: true, overview: { url: marinePolygons, bounds: OVERVIEW_BOUNDS, maxZoom: 8 }
 			},
 			'dzzpnpis:morska_stanista_l_1_1': { ...MARINE_2023, label: '2023 - more - linije' },
 			'dzzpnpis:morska_stanista_pt_1_1': {

@@ -6,7 +6,7 @@
 <script>
 	import { untrack } from 'svelte';
 	import { inspect, legendUrl, rasterSource } from './ogc.js';
-	import { addOverlay, removeOverlay } from './map.js';
+	import { RASTER_OPACITY, addOverlay, removeOverlay, setOpacity } from './map.js';
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
@@ -14,7 +14,7 @@
 	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
 	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
 	let service = $state(), error = $state(), attempt = $state(0), loading = $state(false);
-	let on = $state({}), note = $state({}), legend = $state({}); // per layer name: checked, status text, legend image
+	let on = $state({}), note = $state({}), legend = $state({}), opacity = $state({}); // per layer name: checked, status text, legend image, opacity
 	const infoLayer = $derived(shownInfo?.id.startsWith(`${url}#`) && service?.layers.find((l) => `${url}#${l.name}` === shownInfo.id));
 
 	// The box opens over the map, beside the sidebar, level with the layer's row: downwards from a row in the upper half
@@ -165,7 +165,7 @@
 		const id = `${url}#${name}`;
 		store(id, on[name]);
 		note[name] = '';
-		if (!on[name]) return hide[name]?.();
+		if (!on[name]) return (delete opacity[name], hide[name]?.());
 		// Layers sharing an `exclusive` key work like radio buttons: turning one on turns the others off.
 		const set = layers[name]?.exclusive;
 		if (set) for (const other in on) if (other !== name && on[other] && layers[other]?.exclusive === set) (on[other] = false), toggle(other);
@@ -202,7 +202,6 @@
 	{:else if !service}
 		<small>Učitavam…</small>
 	{:else}
-		<a href={service.capabilitiesUrl} target="_blank" rel="noreferrer">{service.type} endpoint</a>
 		{#each sections.groups as { name, items } (name)}
 			<details class="group" bind:open={groupOpen[name]} class:active={items.some((l) => on[l.name])}>
 				<summary><span>{name}</span> <small>({items.length})</small></summary>
@@ -250,6 +249,10 @@
 			</button>
 		{/if}
 	</label>
+	{#if on[l.name] && layers[l.name]?.opacity}
+		<input type="range" min="0" max="1" step="0.05" title="Neprozirnost" value={opacity[l.name] ?? RASTER_OPACITY}
+			oninput={(e) => setOpacity(map, `${url}#${l.name}`, (opacity[l.name] = +e.currentTarget.value))} />
+	{/if}
 	{#if on[l.name] && legend[l.name]}<img src={legend[l.name]} alt="" />{/if}
 {/snippet}
 
@@ -265,6 +268,7 @@
 	a, img, small, pre + button { display: block; margin: 0 0 6px 12px; }
 	label small, summary small { display: inline; margin: 0; }
 	label > span { flex: 1; }
+	input[type='range'] { display: block; box-sizing: border-box; width: calc(100% - 31px); margin: 0 0 6px 31px; }
 	svg { flex: none; align-self: center; width: 14px; height: 14px; color: #777; }
 	.info { display: flex; align-self: center; padding: 0; border: 0; background: none; cursor: pointer; }
 	.info.open svg { color: #222; }
