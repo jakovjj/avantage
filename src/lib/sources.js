@@ -4,8 +4,9 @@
 //   paint        MapLibre paint overrides per kind: { fill, line, circle }
 //   group        optional group title to group layers in the sidebar
 //   minZoom      minimum map zoom for displaying the layer and requesting its WFS features
-//   heatmap      WMS URL: draw the layer as the server's own rendered image (for raster-like grids too big for WFS)
-//   hide         leave the layer out of the sidebar (e.g. when the same data is shown from another service)
+//   wms          WFS: WMS URL; draw the layer as that server's rendered image (for layers far too big as vectors)
+//   heatmap      true: the sidebar shows such a layer with the heatmap icon
+//   featureInfo  with `wms`: a click on the map asks the WMS (GetFeatureInfo) for the feature there//   hide         leave the layer out of the sidebar (e.g. when the same data is shown from another service)
 //   panel        Svelte component for the details panel, given the clicked feature's `properties`
 //   loadAll      WFS: download the whole layer once whatever its size (measured, e.g. 1.35 MB gzipped), never per view
 //   images       { name: SVG markup } icons for `symbol` (drawn at half the SVG's size, for sharp edges)
@@ -17,6 +18,7 @@
 //                instead of the server's tiles (src/lib/snapshots/); see AGENTS.md
 import OdbaceniOtpad, { STATUS_COLORS } from './panels/OdbaceniOtpad.svelte';
 import Odlagaliste, { MARKERS as LANDFILL_MARKERS } from './panels/Odlagaliste.svelte';
+import Staniste2016 from './panels/Staniste2016.svelte';
 import odlagalistaSnapshot from './snapshots/v_odlagalista_geom.json?url';
 import natureSolar from './snapshots/ocjena_priroda_solar.png?url';
 import natureWind from './snapshots/ocjena_priroda_vjetar.png?url';
@@ -25,6 +27,7 @@ import batsSolar from './snapshots/ascii_osjetljivost_sismisi_solar_import.png?u
 import batsWind from './snapshots/ascii_osjetljivost_sismisi_vjetar.png?url';
 import groupSolar from './snapshots/ascii_osjetljivost_vrsta_solar.png?url';
 import groupWind from './snapshots/ascii_osjetljivost_vrsta_vjetar.png?url';
+import habitats2016 from './snapshots/kopnena_stanista_2016.png?url';
 
 // Ready layers: designed by hand, one by one (own colours and details panel), and listed in AGENTS.md.
 // Lokacije odbačenog otpada (AZO): WFS only, dots coloured like the AZO WMS style.
@@ -76,27 +79,13 @@ const ODLAGALISTA = {
 	}
 };
 
-// Habitat class colours by NKS top level (A–K), from the `nks1_style` property.
-const NKS_COLOR = ['match', ['get', 'nks1_style'],
-	'A', '#4a90d9', // površinske kopnene vode i močvarna staništa
-	'B', '#bdb39a', // neobrasle i slabo obrasle kopnene površine
-	'C', '#a6d96a', // travnjaci, cretovi i visoke zeleni
-	'D', '#7a9a3a', // šikare
-	'E', '#2e7d32', // šume
-	'F', '#e8cf7a', // morska obala
-	'G', '#1f4e8c', // more
-	'H', '#7b5a3c', // podzemlje
-	'I', '#f2d43d', // kultivirane nešumske površine
-	'J', '#d9534f', // izgrađena i industrijska staništa
-	'K', '#9c6ade', // kompleksi staništa
-	'#999'
-];
+const BIOPORTAL_WMS = 'https://services.bioportal.hr/wms';
 
 // Sensitivity grids come as a few huge dissolved polygons (one is ~6 MB), so WFS can't show them at any zoom.
 // Bioportal renders them slowly when zoomed out (a 512 px tile of Croatia takes ~7 s, a 256 px one ~1.2 s;
 // all of Croatia 6.8 s vs 4.4 s), so they use 256 px tiles.
 // They cover all of Croatia, so they share one sidebar section and only one is shown at a time.
-const HEATMAP = { heatmap: 'https://services.bioportal.hr/wms', tileSize: 256, group: 'Osjetljivost', exclusive: 'osjetljivost' };
+const HEATMAP = { wms: BIOPORTAL_WMS, heatmap: true, tileSize: 256, group: 'Osjetljivost', exclusive: 'osjetljivost' };
 // The slow ones (all of Croatia at zoom 7 in 256 px tiles: prirode 4.5 s, staništa 3.6 s, šišmiši 2.5 s, skupno
 // 1.9–2.5 s; ptice 1.6 s and velike zvijeri 0.5 s stay live) show a saved image of all of Croatia until zoom 8.5 (zoom 8
 // sharpness, 8–25 s for the server to render) instead of the tiles. See Snapshots in AGENTS.md.
@@ -158,18 +147,6 @@ const HABITAT_2004_DETAILS = {
 	]
 };
 
-const HABITAT_2016_DETAILS = {
-	fields: [
-		{ keys: ['nks1'], label: 'NKS 1 šifra' },
-		{ keys: ['nks1_naziv'], label: 'NKS 1' },
-		{ keys: ['nks2'], label: 'NKS 2 šifra' },
-		{ keys: ['nks2_naziv'], label: 'NKS 2' },
-		{ keys: ['nks3'], label: 'NKS 3 šifra' },
-		{ keys: ['nks3_naziv'], label: 'NKS 3' },
-		{ keys: ['area_ha'], label: 'Površina (ha)' }
-	]
-};
-
 export default [
 	{
 		title: 'Otpad (AZO)',
@@ -204,9 +181,12 @@ export default [
 			'dzzpnpis:zasticeno_podrucje_poligoni': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:zasticeno_podrucje_tocke': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:kopnena_stanista': { details: HABITAT_2004_DETAILS },
+			// 322,906 polygons (one city view ~8 MB as WFS): drawn by the WMS in its own colours, and a click asks the
+			// WMS for the polygon there (~0.3 s). 512 px tiles per view: 4.3 s for Croatia, 2.4 s at zoom 8.5, 1.1 s at 9.5,
+			// ~0.6 s from 10 (256 px is slower from zoom 9), so a saved image until zoom 8.5.
 			'dzzpnpis:kopnena_stanista_2016': {
-				details: HABITAT_2016_DETAILS,
-				paint: { fill: { 'fill-color': NKS_COLOR, 'fill-opacity': 0.5 }, line: { 'line-color': NKS_COLOR, 'line-width': 0.5 } }
+				panel: Staniste2016, wms: BIOPORTAL_WMS, featureInfo: true,
+				overview: { url: habitats2016, bounds: OVERVIEW_BOUNDS, maxZoom: 8 }
 			},
 			'dzzpnpis:ascii_osjetljivost_ptice_solar': HEATMAP,
 			'dzzpnpis:ascii_osjetljivost_ptice_vjetar': HEATMAP,

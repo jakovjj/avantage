@@ -52,6 +52,7 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 | `src/lib/ogc.js` | Everything OGC: GetCapabilities, layer lists, GetMap/GetTile/GetFeature URLs, provider/attribution, legends; returns plain MapLibre source specs | import MapLibre or touch the map |
 | `src/lib/map.js` | Everything MapLibre: create map, add/remove overlays, styling defaults, popups, feature diffing, view bbox | know about OGC |
 | `src/lib/wfs.js` | WFS loading strategy (small vs. big layers), glues `ogc.js` + `map.js` | contain UI |
+| `src/lib/wms.js` | Clicks on WMS-drawn layers (`featureInfo`): GetFeatureInfo → details panel + outline, glues `ogc.js` + `map.js` | contain UI |
 | `src/lib/utils.js` | Small domain-free helpers (escaping, bbox math, size-capped fetch, running-download counter) | know about OGC or MapLibre |
 | `src/lib/Source.svelte` | UI for one service: layer list, toggles, status notes, legend, "`<TYPE>` endpoint" link | fetch data or build map layers itself |
 | `src/lib/panels/*.svelte` | Hand-designed details panel of one ready layer, given the clicked feature's `properties` | fetch data or touch the map |
@@ -84,6 +85,13 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
   empty requests and **enlarges the last real tiles** beyond the server's limit (e.g. Hrvatske vode flood maps).
   Remember: for 512 px tiles, MapLibre requests tile zoom ≈ map zoom.
 - Show the layer's legend (`legendUrl`) when it is on.
+- A click on a `featureInfo` layer (`wms.js`) sends GetFeatureInfo for a 9 px box around the click, JSON, one feature,
+  with `PROPERTYNAME` listing the layer's attributes from WFS DescribeFeatureType: without it the answer carries the
+  geometry, and one big Bioportal habitat polygon is 23.5 MB (5 s) instead of 0.4 KB (~0.3 s). The highlight is then
+  drawn by the server: the same WMS layer filtered to that feature (`FEATUREID`) with a black outline-only `SLD_BODY`
+  (both GeoServer vendor parameters). A click on a feature the map draws itself (GeoJSON) is handled first and marks
+  the event (`preventDefault`), so WMS layers ignore it. While such a layer is on, the cursor is a pointer over the
+  whole map (`setClickable` in `map.js`).
 
 **WMTS**
 - Only layers with an EPSG:3857 tile matrix set starting at zoom 0 can be shown (MapLibre is Web Mercator only).
@@ -97,9 +105,11 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `minZoom` — map zoom below which the layer is neither drawn nor requested.
 - `details` — labelled fields shown first in the right-hand details panel: `{ fields: [{ keys, label }] }`; all other
   non-empty properties follow under their keys.
-- `heatmap` — WMS URL; the layer is drawn as that server's rendered image instead of WFS features. For grids that
-  are far too big as vectors (Bioportal sensitivity maps are a few dissolved polygons of several MB each).
-- `hide` — leave the layer out of the sidebar (e.g. its data is shown from another service instead).
+- `wms` — WMS URL; the WFS layer is drawn as that server's rendered image instead of WFS features. For layers far
+  too big as vectors (Bioportal sensitivity maps: a few dissolved polygons of several MB each; Karta staništa 2016:
+  322,906 polygons).
+- `heatmap` — `true`: the sidebar shows the layer with the heatmap icon.
+- `featureInfo` — with `wms`: a click on the map asks the WMS for the feature there (see WMS above).- `hide` — leave the layer out of the sidebar (e.g. its data is shown from another service instead).
 - `panel` — Svelte component (`src/lib/panels/`) replacing the properties table in the details panel.
 - `loadAll` — WFS only: download the whole layer once, without the 100 KB cap, and never switch to viewport mode.
   Only after measuring that the full download is acceptable (compressed size, time).
@@ -138,6 +148,13 @@ asks; every other layer keeps the automatic defaults. Add a layer here when the 
   Marker size by `kolicina_odlozenog_otpada` (tonnes) on a log scale, the biggest drawn underneath. Panel
   `Odlagaliste.svelte`: name, status with its marker, place, deposited amount, remediation, permit, data year,
   manager. Of the other fields, the `_tone` breakdowns, `zadnja_izmjena` and `izvjestajno_razdoblje` are empty.
+- **Karta staništa 2016 - poligoni** (Bioportal `kopnena_stanista_2016`, 322,906 polygons) — drawn by the Bioportal
+  WMS (`wms`, its own colours and legend, 512 px tiles, `overview` image until zoom 8.5), clicks via `featureInfo`.
+  Each polygon is a complex of up to 3 NKS habitat types, most important first (`nks1` always; `nks2` in ~60%, `nks3`
+  in ~20%): code, Croatian name and, in ~40%, the scientific syntaxon (`_znan`, "-" when none). `nks_komb` /
+  `nks_stari` repeat the codes, `*_style` are the class letters for map colours, `shape_*` repeat the area.
+  Panel `Staniste2016.svelte`: the types, each with a swatch in the WMS style's colour for its class letter, the main
+  one large, then the area in ha.
 
 ## Snapshots
 
@@ -158,7 +175,7 @@ s per image. The `BBOX` is those bounds in Web Mercator metres; changing `bounds
 size:
 
 ```bash
-for l in ocjena_priroda_solar ocjena_priroda_vjetar osjetljivost_stanista ascii_osjetljivost_sismisi_solar_import ascii_osjetljivost_sismisi_vjetar ascii_osjetljivost_vrsta_solar ascii_osjetljivost_vrsta_vjetar; do curl -o src/lib/snapshots/$l.png "https://services.bioportal.hr/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image/png8&TRANSPARENT=TRUE&CRS=EPSG:3857&STYLES=&LAYERS=$l&BBOX=1491681.18,5206024.46,2176296.05,5877026.55&WIDTH=2239&HEIGHT=2195"; done
+for l in kopnena_stanista_2016 ocjena_priroda_solar ocjena_priroda_vjetar osjetljivost_stanista ascii_osjetljivost_sismisi_solar_import ascii_osjetljivost_sismisi_vjetar ascii_osjetljivost_vrsta_solar ascii_osjetljivost_vrsta_vjetar; do curl -o src/lib/snapshots/$l.png "https://services.bioportal.hr/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&FORMAT=image/png8&TRANSPARENT=TRUE&CRS=EPSG:3857&STYLES=&LAYERS=$l&BBOX=1491681.18,5206024.46,2176296.05,5877026.55&WIDTH=2239&HEIGHT=2195"; done
 ```
 
 | File | Layer | Taken |
@@ -171,6 +188,7 @@ for l in ocjena_priroda_solar ocjena_priroda_vjetar osjetljivost_stanista ascii_
 | `ascii_osjetljivost_sismisi_vjetar.png` | Bioportal Osjetljivost šišmiši - vjetar (overview) | 2026-11-08 |
 | `ascii_osjetljivost_vrsta_solar.png` | Bioportal Osjetljivost skupno - solar (overview) | 2026-11-08 |
 | `ascii_osjetljivost_vrsta_vjetar.png` | Bioportal Osjetljivost skupno - vjetar (overview) | 2026-11-08 |
+| `kopnena_stanista_2016.png` | Bioportal Karta staništa 2016 - poligoni (overview) | 2026-11-08 |
 
 ## Adding a built-in service
 
@@ -203,6 +221,8 @@ for l in ocjena_priroda_solar ocjena_priroda_vjetar osjetljivost_stanista ascii_
 - Details panel (right): a ready layer's own `panel`, otherwise the properties table. A panel starts with a small
   grey type label (`<h5>`, e.g. "Odlagalište otpada") above its heading, so it's clear what was clicked. The "Google Maps" link (points
   only) is centred and stuck to the bottom of the panel, also while its content scrolls.
+- Selection highlight: a soft amber glow under a selected point's marker; selected lines and areas always get a black
+  outline (it shows on every fill colour; amber or blue didn't).
 - Each layer row has a small grey icon after its name showing its map type (markers / lines / areas / heatmap / image), derived from
   the service: one `DescribeFeatureType` per WFS (a sample feature when the schema says only "geometry").
 - The map is limited to Croatia (`maxBounds`). `croatiaStyle` in `map.js` rewrites the basemap style before the first
