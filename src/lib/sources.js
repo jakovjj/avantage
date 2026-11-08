@@ -7,6 +7,7 @@
 //   heatmap      WMS URL: draw the layer as the server's own rendered image (for raster-like grids too big for WFS)
 //   hide         leave the layer out of the sidebar (e.g. when the same data is shown from another service)
 //   panel        Svelte component for the details panel, given the clicked feature's `properties`
+//   loadAll      WFS: download the whole layer once whatever its size (measured, e.g. 1.35 MB gzipped), never per view
 import OdbaceniOtpad, { STATUS_COLORS } from './panels/OdbaceniOtpad.svelte';
 
 // Ready layers: designed by hand, one by one (own colours and details panel), and listed in DEVELOPMENT.md.
@@ -16,6 +17,7 @@ const AMOUNT = ['coalesce', ['get', 'ukupna_kolicina_otpada'], ''];
 const KG = ['to-number', ['slice', AMOUNT, 0, ['max', 0, ['index-of', ' kg', AMOUNT]]], 0];
 const ODBACENI_OTPAD = {
 	panel: OdbaceniOtpad,
+	loadAll: true, // 14,195 points: 10 MB of JSON, 1.35 MB downloaded (gzip), ~1.5 s; then never refetched
 	paint: {
 		circle: {
 			'circle-color': ['match', ['get', 'status_lokacije_otpada'], ...Object.entries(STATUS_COLORS).flat(), '#999'],

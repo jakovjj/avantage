@@ -91,7 +91,8 @@
 				viewer.canvas.addEventListener('wheel', (e) => {
 					e.preventDefault();
 					const pixels = e.deltaY * (e.deltaMode === 1 ? 33 : 1); // Firefox may report lines
-					zoom(viewer.imageData.ratio * Math.exp(-Math.max(-300, Math.min(300, pixels)) * 0.0025), e);
+					// One mouse-wheel notch (100 px) zooms ×1.13; fast spins are capped at that per event.
+					zoom(viewer.imageData.ratio * Math.exp(-Math.max(-100, Math.min(100, pixels)) * 0.00125), e);
 				}, { passive: false });
 			}
 		});

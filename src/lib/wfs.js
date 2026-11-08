@@ -83,7 +83,8 @@ export function showWfs(map, id, service, name, layer = {}, onNote, onLimit) {
 		if (started) return;
 		started = true;
 		run(async (signal) => {
-			if (!wholeLayers.has(id)) wholeLayers.set(id, await getFeatures(service, name, { maxBytes: SMALL_BYTES, signal }));
+			if (!wholeLayers.has(id))
+				wholeLayers.set(id, await getFeatures(service, name, { maxBytes: layer.loadAll ? Infinity : SMALL_BYTES, signal }));
 			if (!zoomAllowed()) {
 				started = false;
 				return 'približi kartu';
