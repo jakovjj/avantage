@@ -4,6 +4,7 @@ import { escapeHtml, fetchText, track } from './utils.js';
 
 const ENDPOINTS = { WMS: WmsEndpoint, WFS: WfsEndpoint, WMTS: WmtsEndpoint };
 // WMS servers render each tile on request (~0.3-1 s), so bigger tiles mean 4x fewer requests and a less patchy map.
+// Not for every server: where rendering grows faster than the area, a layer's `tileSize` tweak asks for 256.
 const WMS_TILE = 512;
 export const MAX_FEATURES = 5000;
 
@@ -111,23 +112,21 @@ export async function inspect(url, type = guessType(url)) {
 	throw new Error(errors.join('\n'));
 }
 
-function wmsTiles(endpoint, name) {
+function wmsTiles(endpoint, name, size) {
 	const url = endpoint.getMapUrl([name], {
-		widthPx: WMS_TILE, heightPx: WMS_TILE, crs: 'EPSG:3857', extent: [0, 0, 0, 0], outputFormat: 'image/png'
+		widthPx: size, heightPx: size, crs: 'EPSG:3857', extent: [0, 0, 0, 0], outputFormat: 'image/png'
 	});
 	return url.replace(/BBOX=[^&]*/i, 'BBOX={bbox-epsg-3857}') + '&TRANSPARENT=TRUE';
 }
 
-// OGC scale denominator of a Web Mercator WMS tile at zoom 0.
-const ZOOM0_SCALE = 559082264.0287178 * 256 / WMS_TILE;
-
 /** Tile zooms where a WMS layer draws anything, from its declared scale limits. */
-function wmsZooms(endpoint, name) {
+function wmsZooms(endpoint, name, size) {
+	const zoom0Scale = 559082264.0287178 * 256 / size; // OGC scale denominator of a Web Mercator tile at zoom 0
 	const { minScaleDenominator: min, maxScaleDenominator: max } = endpoint.getLayerByName(name) ?? {};
 	return {
-		...(max && { minzoom: Math.max(0, Math.ceil(Math.log2(ZOOM0_SCALE / max))) }),
+		...(max && { minzoom: Math.max(0, Math.ceil(Math.log2(zoom0Scale / max))) }),
 		// beyond this the server draws nothing, so MapLibre enlarges these tiles instead
-		...(min && { maxzoom: Math.min(22, Math.floor(Math.log2(ZOOM0_SCALE / min))) })
+		...(min && { maxzoom: Math.min(22, Math.floor(Math.log2(zoom0Scale / min))) })
 	};
 }
 
@@ -169,12 +168,12 @@ export const providerName = ({ info, capabilitiesUrl }) =>
 /** HTML credit for the map's attribution control. */
 export const attribution = (service) => escapeHtml(providerName(service));
 
-/** MapLibre tile source for a WMS or WMTS layer. */
-export const rasterSource = (service, name) => ({
+/** MapLibre tile source for a WMS or WMTS layer; `tileSize` in px for WMS. */
+export const rasterSource = (service, name, tileSize = WMS_TILE) => ({
 	type: 'raster',
 	attribution: attribution(service),
 	...(service.type === 'WMS'
-		? { tileSize: WMS_TILE, tiles: [wmsTiles(service.endpoint, name)], ...wmsZooms(service.endpoint, name) }
+		? { tileSize, tiles: [wmsTiles(service.endpoint, name, tileSize)], ...wmsZooms(service.endpoint, name, tileSize) }
 		: { tileSize: 256, tiles: [wmtsTiles(service.endpoint, name)] })
 });
 

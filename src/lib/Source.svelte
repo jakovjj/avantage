@@ -161,6 +161,9 @@
 		store(id, on[name]);
 		note[name] = '';
 		if (!on[name]) return hide[name]?.();
+		// Layers sharing an `exclusive` key work like radio buttons: turning one on turns the others off.
+		const set = layers[name]?.exclusive;
+		if (set) for (const other in on) if (other !== name && on[other] && layers[other]?.exclusive === set) (on[other] = false), toggle(other);
 		if (service.type === 'WFS' && !layers[name]?.heatmap) {
 			hide[name] = showWfs(map, id, service, name, layers[name], (t) => (note[name] = t));
 			return;
@@ -168,7 +171,7 @@
 		try {
 			const [src, layer] = layers[name]?.heatmap ? await heatmapSource(name) : [service, name];
 			if (!on[name]) return; // turned off while the WMS capabilities were loading
-			addOverlay(map, id, rasterSource(src, layer));
+			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize), layers[name]);
 			legend[name] = legendUrl(src, layer);
 			hide[name] = () => removeOverlay(map, id);
 		} catch (e) {
