@@ -1,11 +1,13 @@
 <script>
-	import { onMount } from 'svelte';
-	import { clearSelection, createMap, flyToCoordinates } from '#lib/map.js';
+	import { onMount, setContext, tick } from 'svelte';
+	import { SvelteMap } from 'svelte/reactivity';
+	import { clearSelection, createMap, flyToCoordinates, setOverlayOrder } from '#lib/map.js';
 	import { propsTable, watchDownloads } from '#lib/utils.js';
-	import Source from '#lib/Source.svelte';
+	import Source, { closeLayerInfo } from '#lib/Source.svelte';
 	import SOURCES from '#lib/sources.js';
 
 	const KEY = 'avantage.customSources';
+	const ORDER_KEY = 'avantage.layerOrder';
 
 	let container, map = $state();
 	let selectedFeature = $state(null);
@@ -19,6 +21,20 @@
 	const SECTIONS = Object.entries(Object.groupBy(SOURCES.filter((s) => s.section), (s) => s.section));
 	let sectionOpen = $state({});
 	let showActiveOnly = $state(false);
+	const activeLayers = setContext('avantage.activeLayers', new SvelteMap());
+	let layerOrder = $state(loadLayerOrder());
+	let draggedLayer = $state(null), dropTarget = $state(null);
+	const activeRows = $derived.by(() => {
+		// A custom service can also occur in the built-in catalogue.
+		const rows = [...activeLayers.values()].flat();
+		const positions = new Map(layerOrder.map((id, index) => [id, index]));
+		return [...new Map(rows.map((entry) => [entry.id, entry])).values()].sort((a, b) =>
+			(positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity) || b.rank - a.rank);
+	});
+	$effect(() => {
+		if (map) setOverlayOrder(map, activeRows.map((entry) => entry.sources));
+	});
+	let addLayerButton, layerFilter;
 	let filterQuery = $state('');
 	let resets = $state(0); // bumped by the reset button, see Source.svelte
 	let cursor = $state(), zoom = $state(); // debug readout
@@ -31,6 +47,93 @@
 
 	function selectFeature(feature, sourceId, layer = {}) {
 		selectedFeature = feature ? { feature, sourceId, layer } : null;
+	}
+
+	function showLayers(active) {
+		closeLayerInfo();
+		showActiveOnly = active;
+	}
+
+	function loadLayerOrder() {
+		try {
+			const stored = JSON.parse(localStorage.getItem(ORDER_KEY) ?? '[]');
+			return Array.isArray(stored) ? [...new Set(stored.filter((id) => typeof id === 'string'))] : [];
+		} catch {
+			return [];
+		}
+	}
+
+	function moveLayer(id, next) {
+		const ids = activeRows.map((entry) => entry.id);
+		const index = ids.indexOf(id);
+		if (index < 0 || next < 0 || next >= ids.length || index === next) return false;
+		ids.splice(index, 1);
+		ids.splice(next, 0, id);
+		layerOrder = [...ids, ...layerOrder.filter((saved) => !ids.includes(saved))];
+		closeLayerInfo();
+		try {
+			localStorage.setItem(ORDER_KEY, JSON.stringify(layerOrder));
+		} catch {}
+		return true;
+	}
+
+	async function reorderWithKeyboard(event, id, index) {
+		if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+		event.preventDefault();
+		const handle = event.currentTarget;
+		if (moveLayer(id, index + (event.key === 'ArrowUp' ? -1 : 1))) {
+			await tick();
+			handle.focus({ preventScroll: true });
+			handle.scrollIntoView({ block: 'nearest' });
+		}
+	}
+
+	function startLayerDrag(event, id) {
+		const row = event.currentTarget.closest('.active-layer');
+		const { left, top } = row.getBoundingClientRect();
+		event.dataTransfer.effectAllowed = 'move';
+		event.dataTransfer.setData('text/plain', id);
+		event.dataTransfer.setDragImage(row, event.clientX - left, event.clientY - top);
+		closeLayerInfo();
+		draggedLayer = id;
+	}
+
+	function layerDragOver(event, id) {
+		if (!draggedLayer) return;
+		event.preventDefault();
+		event.dataTransfer.dropEffect = 'move';
+		const after = dropAfter(event);
+		if (dropTarget?.id !== id || dropTarget.after !== after) {
+			dropTarget = id === draggedLayer ? null : { id, after };
+		}
+	}
+
+	function dropAfter(event) {
+		const { top, height } = event.currentTarget.getBoundingClientRect();
+		return event.clientY >= top + height / 2;
+	}
+
+	function endLayerDrag() {
+		draggedLayer = dropTarget = null;
+	}
+
+	function dropLayer(event, id, index) {
+		if (!draggedLayer) return;
+		event.preventDefault();
+		const from = activeRows.findIndex((entry) => entry.id === draggedLayer);
+		if (from >= 0 && draggedLayer !== id) {
+			moveLayer(draggedLayer, index + Number(dropAfter(event)) - Number(from < index));
+		}
+		endLayerDrag();
+	}
+
+	async function focusAfterRemoval(event) {
+		if (event.target.type !== 'checkbox' || event.target.checked) return;
+		const row = event.target.closest('.active-layer');
+		const next = row.nextElementSibling?.querySelector('input[type="checkbox"]')
+			?? row.previousElementSibling?.querySelector('input[type="checkbox"]');
+		await tick();
+		(next?.isConnected ? next : addLayerButton).focus();
 	}
 
 	function searchPlaces() {
@@ -172,32 +275,67 @@
 			<h1>Avantage</h1>
 			<button onclick={() => (resets++, filterQuery = '')}>Resetiraj</button>
 		</header>
-		<label class="active-toggle"><input type="checkbox" bind:checked={showActiveOnly} /> Pokaži aktivne slojeve</label>
-		<input class="layer-filter" type="search" placeholder="Filtriraj slojeve" bind:value={filterQuery} />
-		{#if map}
-			{#each SECTIONS as [name, services] (name)}
-				<details class="section" bind:open={sectionOpen[name]}>
-					<summary><span>{name}</span></summary>
-					{#each services as source}<Source {map} {...source} flat open={sectionOpen[name]} reset={resets} {showActiveOnly} {filterQuery} />{/each}
-				</details>
-			{/each}
-			{#each SOURCES.filter((s) => s.category) as source}<Source {map} {...source} title={source.category} part="ready" reset={resets} {showActiveOnly} {filterQuery} />{/each}
-			{#if showAll}
-				<hr />
-				<p class="raw-note">Niže navedeni slojevi prikazivat će se na karti bez obrade.</p>
-				{#each SOURCES.filter((s) => !s.section) as source}<Source {map} {...source} part="rest" reset={resets} {showActiveOnly} {filterQuery} />{/each}
+		<nav aria-label="Slojevi">
+			<button aria-pressed={!showActiveOnly} onclick={() => showLayers(false)}>Svi slojevi</button>
+			<button aria-pressed={showActiveOnly} onclick={() => showLayers(true)}>Aktivni slojevi</button>
+		</nav>
+		<div class="catalogue" hidden={showActiveOnly}>
+			<input class="layer-filter" type="search" placeholder="Filtriraj slojeve" aria-label="Filtriraj slojeve" bind:this={layerFilter} bind:value={filterQuery} />
+			{#if map}
+				{#each SECTIONS as [name, services] (name)}
+					<details class="section" bind:open={sectionOpen[name]}>
+						<summary><span>{name}</span></summary>
+						{#each services as source}<Source {map} {...source} flat open={sectionOpen[name]} reset={resets} {filterQuery} />{/each}
+					</details>
+				{/each}
+				{#each SOURCES.filter((s) => s.category) as source}<Source {map} {...source} title={source.category} part="ready" reset={resets} {filterQuery} />{/each}
+				{#if showAll}
+					<hr />
+					<p class="raw-note">Niže navedeni slojevi prikazivat će se na karti bez obrade.</p>
+					{#each SOURCES.filter((s) => !s.section) as source}<Source {map} {...source} part="rest" reset={resets} {filterQuery} />{/each}
+				{/if}
+				{#each custom as source (source)}<Source {map} {...source} reset={resets} {filterQuery} onremove={() => remove(source)} />{/each}
 			{/if}
-			{#each custom as source (source)}<Source {map} {...source} reset={resets} {showActiveOnly} {filterQuery} onremove={() => remove(source)} />{/each}
-		{/if}
-		<div class="manual-options">
-			<label class="manual-toggle"><input type="checkbox" bind:checked={showAll} /> Prikaži sve slojeve</label>
-			<label class="manual-toggle"><input type="checkbox" bind:checked={showAddForm} /> Dodaj ručno slojeve</label>
-			{#if showAddForm}
-				<form onsubmit={add}>
-					<input type="url" bind:value={url} placeholder="WMS / WFS / WMTS URL" required />
-					<button>Dodaj</button>
-				</form>
-			{/if}
+			<div class="manual-options">
+				<label class="manual-toggle"><input type="checkbox" bind:checked={showAll} /> Prikaži sve slojeve</label>
+				<label class="manual-toggle"><input type="checkbox" bind:checked={showAddForm} /> Dodaj ručno slojeve</label>
+				{#if showAddForm}
+					<form onsubmit={add}>
+						<input type="url" bind:value={url} placeholder="WMS / WFS / WMTS URL" required />
+						<button>Dodaj</button>
+					</form>
+				{/if}
+			</div>
+		</div>
+		<div class="active-layers" hidden={!showActiveOnly} onchange={focusAfterRemoval}>
+			<ul class="layer-stack" aria-label="Redoslijed slojeva">
+				{#each activeRows as entry, index (entry.id)}
+					<li class="active-layer" class:dragging={draggedLayer === entry.id}
+						class:drop-before={dropTarget?.id === entry.id && !dropTarget.after}
+						class:drop-after={dropTarget?.id === entry.id && dropTarget.after}
+						ondragover={(event) => layerDragOver(event, entry.id)}
+						ondragleave={(event) => {
+							if (dropTarget?.id === entry.id && !event.currentTarget.contains(event.relatedTarget)) dropTarget = null;
+						}}
+						ondrop={(event) => dropLayer(event, entry.id, index)}>
+						{#if activeRows.length > 1}
+							<button class="drag-handle" type="button" draggable="true"
+								aria-label={`Promijeni redoslijed sloja ${entry.title}`} aria-keyshortcuts="ArrowUp ArrowDown"
+								title="Povuci za promjenu redoslijeda"
+								ondragstart={(event) => startLayerDrag(event, entry.id)} ondragend={endLayerDrag}
+								onkeydown={(event) => reorderWithKeyboard(event, entry.id, index)}>
+								<svg viewBox="0 0 12 16" width="12" height="16" fill="currentColor" aria-hidden="true">
+									<circle cx="4" cy="3" r="1.25" /><circle cx="8" cy="3" r="1.25" />
+									<circle cx="4" cy="8" r="1.25" /><circle cx="8" cy="8" r="1.25" />
+									<circle cx="4" cy="13" r="1.25" /><circle cx="8" cy="13" r="1.25" />
+								</svg>
+							</button>
+						{/if}
+						<div class="active-layer-content">{@render entry.render(entry.layer, entry.title, true)}</div>
+					</li>
+				{/each}
+			</ul>
+			<button class="add-layer" bind:this={addLayerButton} onclick={async () => { showLayers(false); await tick(); layerFilter.focus(); }}>Dodaj sloj</button>
 		</div>
 	</aside>
 	<main bind:this={container}>
@@ -252,7 +390,26 @@
 <style>
 	:global(body) { margin: 0; height: 100dvh; font: 14px system-ui, sans-serif; color-scheme: light; background: #fff; color: #222; }
 	.layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: 100%; }
-	.sidebar { display: flex; flex-direction: column; overflow-y: auto; padding: 0 16px 16px; border-right: 1px solid #ddd; user-select: none; }
+	.sidebar { display: flex; flex-direction: column; min-height: 0; padding: 0 16px; border-right: 1px solid #ddd; user-select: none; }
+	nav { display: flex; flex: none; border-bottom: 1px solid #ddd; }
+	nav button { flex: 1; padding: 8px 4px; border: 0; border-bottom: 2px solid transparent; background: #fff; color: #666; font: inherit; cursor: pointer; }
+	nav button[aria-pressed='true'] { border-bottom-color: #222; color: #222; }
+	nav button:hover { background: #f5f5f5; }
+	.catalogue, .active-layers { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 0 16px; }
+	.catalogue { display: flex; flex-direction: column; }
+	[hidden] { display: none; }
+	.layer-stack { list-style: none; padding: 0; margin: 0; }
+	.active-layer { position: relative; display: flex; align-items: center; padding: 8px 0; border-bottom: 1px solid #ddd; }
+	.active-layer-content { flex: 1; min-width: 0; }
+	.drag-handle { flex: 0 0 24px; display: grid; place-items: center; height: 28px; padding: 0; border: 0; background: none; color: #666; cursor: grab; }
+	.drag-handle svg { pointer-events: none; }
+	.drag-handle:hover { color: #222; background: #f5f5f5; }
+	.drag-handle:active { cursor: grabbing; }
+	.active-layer.dragging { opacity: 0.5; }
+	.drop-before::after, .drop-after::after { content: ''; position: absolute; left: 0; right: 0; height: 2px; background: #222; pointer-events: none; }
+	.drop-before::after { top: 0; }
+	.drop-after::after { bottom: -1px; }
+	.add-layer { display: block; margin: 12px auto 0; }
 	/* Overlays the map: resizing the map container would move and re-centre the map. */
 	/* border-box: the controls and readout are shifted by exactly this 320px, padding included. */
 	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; box-sizing: border-box; z-index: 10; display: flex; flex-direction: column; overflow-y: auto; padding: 12px 12px 0; border-left: 1px solid #ddd; background: #fff; }
@@ -271,11 +428,9 @@
 	.section > summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 	.section > summary span { padding: 2px 4px; } /* like a service's title (Source.svelte) */
 	.raw-note { margin: 0 0 6px; color: #666; font-size: 12px; }
-	.layer-filter { flex: none; height: 1.5em; margin: 0 0 6px; padding-block: 0; }
+	.layer-filter { flex: none; box-sizing: border-box; width: 100%; height: 28px; margin: 0 0 6px; }
 	.manual-toggle { display: flex; align-items: center; gap: 6px; margin: 12px 0; }
 	.manual-toggle input { flex: none; }
-	.active-toggle { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; }
-	.active-toggle input { flex: none; }
 	.manual-options { margin-top: auto; }
 	main { position: relative; min-width: 0; min-height: 0; }
 	.place-search { position: absolute; z-index: 3; top: 8px; left: 8px; display: block; width: min(360px, calc(100% - 120px)); margin: 0; }
