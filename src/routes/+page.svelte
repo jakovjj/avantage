@@ -202,12 +202,13 @@
 		return `https://www.google.com/maps/search/?api=1&${new URLSearchParams({ query })}`;
 	}
 
-	// A layer with a `share` text shares a link back to this app that reopens the feature; the others share Google Maps.
+	// A layer's `share` text or property-based message accompanies a link that reopens its feature.
 	function shareData(feature, sourceId, layer) {
 		if (!layer.share) return { url: googleMapsUrl(feature) };
 		const link = new URL(location.pathname, location.origin);
 		link.search = `${layer.shareCode}${String(feature.id).split('.').pop()}`;
-		return { text: `${layer.share} ${link}` };
+		const message = typeof layer.share === 'function' ? layer.share(feature.properties) : layer.share;
+		return { text: `${message} ${link}` };
 	}
 
 	async function share(data) {

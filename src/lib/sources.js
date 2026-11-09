@@ -17,7 +17,7 @@
 //   overview     WMS: { url, bounds: [w, s, e, n], maxZoom } a saved image of the whole layer shown until maxZoom + 0.5
 //                instead of the server's tiles (src/lib/snapshots/); see DEVELOPMENT.md
 import OdbaceniOtpad, { STATUS_COLORS } from './panels/OdbaceniOtpad.svelte';
-import Odlagaliste, { MARKERS as LANDFILL_MARKERS } from './panels/Odlagaliste.svelte';
+import Odlagaliste, { MARKERS as LANDFILL_MARKERS, landfillShareText } from './panels/Odlagaliste.svelte';
 import Staniste2016 from './panels/Staniste2016.svelte';
 import Staniste2004 from './panels/Staniste2004.svelte';
 import OtpadStatistike from './panels/OtpadStatistike.svelte';
@@ -69,6 +69,8 @@ const TONNES = ['to-number', ['get', 'kolicina_odlozenog_otpada'], 0];
 const LANDFILL_SIZE = ['case', ['>', TONNES, 0], ['interpolate', ['linear'], ['log10', TONNES], 2, 0.7, 4, 1, 7, 2.2], 1];
 const ODLAGALISTA = {
 	ready: true,
+	share: landfillShareText,
+	shareCode: 'od', // /?od104 opens v_odlagalista_geom.104
 	panel: Odlagaliste,
 	// 317 points, 292 KB of JSON (28 KB gzipped), but the server takes ~11 s to start answering.
 	snapshot: odlagalistaSnapshot,
