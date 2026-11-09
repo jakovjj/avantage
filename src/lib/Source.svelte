@@ -311,7 +311,7 @@
 			{text}
 			<small>{rowNote(l.name)}</small>
 		</span>
-		{#if icon}<svg viewBox="0 0 12 12" fill="currentColor"><title>{kind}</title>{@html icon}</svg>{/if}
+		{#if icon}<svg class:enabled={on[l.name]} viewBox="0 0 12 12" fill="currentColor"><title>{kind}</title>{@html icon}</svg>{/if}
 		{#if l.about}
 			<button class="info" class:open={shownInfo?.id === `${url}#${l.name}`} onclick={(e) => toggleInfo(e, l)} title="Informacije" data-info>
 				<svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="6" cy="6" r="5.2" /><path d="M6 5.2V9M6 3v.9" /></svg>
@@ -376,6 +376,7 @@
 	.opacity-control { display: block; margin: 2px 0 6px 31px; padding: 0; cursor: default; font-size: 12px; color: #666; }
 	.opacity-control input { display: block; box-sizing: border-box; width: 100%; margin: 2px 0 0; }
 	svg { flex: none; align-self: center; width: 14px; height: 14px; color: #777; }
+	svg.enabled { color: #2e7d32; }
 	.info { display: flex; align-self: center; padding: 0; border: 0; background: none; cursor: pointer; }
 	.info.open svg { color: #222; }
 	.info-box { position: fixed; z-index: 15; box-sizing: border-box; width: 300px; max-height: calc(100dvh - 16px); overflow-y: auto; padding: 10px 12px; border: 1px solid #999; background: #fff; font-size: 13px; }
