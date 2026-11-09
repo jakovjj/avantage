@@ -205,7 +205,7 @@ const ORTHOPHOTOS = [
 	...(whole && { format: 'image/jpeg' }), ...(together && { together: together.map(DGU_WMS) })
 }));
 
-// "Otpad (dev)": every AZO layer whose records count amounts of waste (tonnes, kg per person, yearly tonnage of a facility,
+// "Otpad (statistike)": every AZO layer whose records count amounts of waste (tonnes, kg per person, yearly tonnage of a facility,
 // recovery / recycling / separation rates), chosen by reading a record of each of the 98, not by title. Left out:
 // facility lists with only a capacity, sludge fields (areas), recycling yards, CGOs, "crne točke"; and, the user's call,
 // every facility layer (composting, biogas, incineration, energy recovery, landfills, construction waste on site and
@@ -226,14 +226,14 @@ const AMOUNTS = Object.fromEntries([
 export default [
 	{
 		title: 'Otpad – objekti (AZO)',
-		category: 'Otpad',
+		category: 'Otpad (lokacije)',
 		type: 'WFS',
 		url: 'https://servisi.azo.hr/otpad/wfs',
 		layers: { 'otpad:odbaceni_otpad': ODBACENI_OTPAD, 'otpad:v_odlagalista_geom': ODLAGALISTA, 'otpad:depo_speleo_2025': CAVE_DUMPS }
 	},
 	{
 		title: 'Otpad (AZO)',
-		category: 'Otpad (dev)',
+		category: 'Otpad (statistike)',
 		type: 'WMS',
 		url: 'https://servisi.azo.hr/otpad/wms?request=GetCapabilities',
 		wfs: 'https://servisi.azo.hr/otpad/wfs',

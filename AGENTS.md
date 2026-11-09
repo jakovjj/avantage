@@ -121,7 +121,7 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `id(feature)` — stable feature key when the server's ids change between requests.
 - `paint` — MapLibre paint overrides per kind: `{ fill, line, circle }` (e.g. habitat map coloured by NKS class).
 - `group` — sidebar group title when it can't come from the `Group - layer` title prefix; `false` keeps the row out of
-  any group ("Otpad (dev)" lists its years in one list).
+  any group ("Otpad (statistike)" lists its years in one list).
 - `label` — the layer's row text in its group when it can't come from the title (rows are sorted by it).
 - `opacity` — WMS: an opacity slider under the row while the layer is on, for rasters covering the whole map
   (the Osjetljivost maps, the habitat polygon layers; service-level for the Digitalni ortofoto surveys, where it also
@@ -178,7 +178,7 @@ only. Their config sits in the "Ready layers" block at the top of `sources.js`. 
 asks; every other layer keeps the automatic defaults. Add a layer here when the user says its design is done.
 
 The sidebar lists only these on top, marked `ready`, under four categories named by their service's `category`:
-**Otpad** (AZO WFS), **Otpad (dev)** (AZO WMS: the 18 layers whose records count amounts of waste, 2014–2023, picked by reading a
+**Otpad (lokacije)** (AZO WFS), **Otpad (statistike)** (AZO WMS: the 18 layers whose records count amounts of waste, 2014–2023, picked by reading a
 record of each of the 98: tonnes, kg per person, a facility's yearly tonnage, recovery / recycling / separation rates;
 counties and municipalities only, by the user's pick; clickable, plain properties table, one list, one at a time), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
 **Hrvatske vode** (all 4 flood maps, the user's choice). Every other layer shows in its service's section only when
