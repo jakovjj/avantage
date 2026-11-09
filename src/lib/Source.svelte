@@ -29,7 +29,7 @@
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, section, layers = {}, authKey, format, together, exclusive, opacity: slider, part, flat = false, open = false, onremove, reset = 0, filterQuery = '' } = $props();
+	let { map, url, type, title, section, layers = {}, authKey, format, together, exclusive, opacity: slider, wfs, stack, part, flat = false, open = false, onremove, reset = 0, filterQuery = '' } = $props();
 	// `flat`: the service's rows sit straight in a section of the page (`open` when it is), its one layer named `title`.
 	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
 	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
@@ -59,7 +59,9 @@
 			id: `${url}#${l.name}`,
 			sources: [l.name, ...(layers[l.name]?.members ?? [])].map((name) => `${url}#${name}`)
 				.concat((together ?? []).map((_, i) => `${url}#${l.name}+${i + 1}`)),
-			rank: section ? -1 : (isRaster(l) ? 0 : 3) + ({ points: 2, lines: 1 }[l.kind] ?? 0),
+			// Where a newly enabled layer starts in the stack: by its service's `stack` (orthophotos -1 at the bottom, then
+			// flood maps, habitats, waste statistics), map-drawn layers above every image; then points over lines over areas.
+			rank: (isRaster(l) ? (stack ?? 0) * 10 : 1000) + ({ points: 2, lines: 1 }[l.kind] ?? 0),
 			layer: l,
 			title: flat && listed.length === 1 ? [section, title].filter(Boolean).join(' - ') : layers[l.name]?.label
 				? [layers[l.name].group, layers[l.name].label].filter(Boolean).join(' - ') : l.title,
@@ -143,7 +145,7 @@
 	// dash without the trailing space ("2017 -Građevni otpad") or as an en dash.
 	const naturalOrder = new Intl.Collator('hr', { numeric: true, sensitivity: 'base' });
 	const titlePrefix = (title) => title.match(/^(.+?)\s+[-–—]\s*/)?.[1] ?? null;
-	const layerGroup = (l) => layers[l.name]?.group || l.title.match(/^(.+?)\s+\d{4}\s*[-–—]\s*\d{4}$/)?.[1] || titlePrefix(l.title) || l.title.match(/^(.+?)\s+\d{4}$/)?.[1] || l.title.match(/^(MTB)\s+\d+$/i)?.[1] || null;
+	const layerGroup = (l) => layers[l.name]?.group === false ? null : layers[l.name]?.group || l.title.match(/^(.+?)\s+\d{4}\s*[-–—]\s*\d{4}$/)?.[1] || titlePrefix(l.title) || l.title.match(/^(.+?)\s+\d{4}$/)?.[1] || l.title.match(/^(MTB)\s+\d+$/i)?.[1] || null;
 	const itemLabel = (l, group) => {
 		if (layers[l.name]?.label) return layers[l.name].label;
 		if (l.title.startsWith(`${group} `)) return l.title.slice(group.length).trim();
@@ -237,6 +239,9 @@
 			const [src, layer] = layers[name]?.wms ? await wmsSource(name) : [service, name];
 			// `together`: other WMS services whose first layer is drawn with this one, as one row (each covers another part).
 			const others = await Promise.all((together ?? []).map((u) => inspect(u, 'WMS')));
+			// A WMS service's `wfs` publishes the same layers as WFS: their attributes keep geometry out of GetFeatureInfo.
+			const twins = layers[name]?.featureInfo && wfs && (await inspect(wfs, 'WFS'));
+			const twin = twins?.layers.find((l) => l.name.split(':').pop() === name);
 			if (authKey) await useKey(authKey);
 			if (!on[name] || requests.get(name) !== request) return;
 			const kind = service.layers.find((l) => l.name === name)?.kind;
@@ -245,7 +250,8 @@
 			others.forEach((o, i) => addOverlay(map, ids[i + 1], rasterSource(o, o.layers[0].name, layers[name]?.tileSize, format), layers[name], kind));
 			if (opacity[name] !== undefined) ids.forEach((o) => setOpacity(map, o, opacity[name]));
 			legend[name] = legendUrl(src, layer);
-			const stopQueries = layers[name]?.featureInfo && queryOnClick(map, id, src, layer, service, name, kind === 'points');
+			const [info, infoName, infoKind] = twin ? [twins, twin.name, twin.kind] : [service, name, kind];
+			const stopQueries = layers[name]?.featureInfo && queryOnClick(map, id, src, layer, info, infoName, infoKind === 'points');
 			hide[name] = () => (stopQueries?.(), ids.forEach((o) => removeOverlay(map, o)));
 		} catch (e) {
 			if (!on[name] || requests.get(name) !== request) return;
