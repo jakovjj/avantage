@@ -207,7 +207,9 @@ const ORTHOPHOTOS = [
 
 // "Otpad (dev)": every AZO layer whose records count amounts of waste (tonnes, kg per person, yearly tonnage of a facility,
 // recovery / recycling / separation rates), chosen by reading a record of each of the 98, not by title. Left out:
-// facility lists with only a capacity, sludge fields (areas), recycling yards, CGOs, "crne točke". Drawn by the WMS,
+// facility lists with only a capacity, sludge fields (areas), recycling yards, CGOs, "crne točke"; and, the user's call,
+// every facility layer (composting, biogas, incineration, energy recovery, landfills, construction waste on site and
+// crushers, asbestos cassettes) and the 2017 construction waste by type / treatment: only counties and municipalities. Drawn by the WMS,
 // clicked via GetFeatureInfo, shown in the plain properties table for now. County polygons are 27 MB each as WFS; a
 // click without the attribute list returns 1.5 MB of geometry, with it 0.3 KB.
 const AMOUNTS = Object.fromEntries([
@@ -215,16 +217,10 @@ const AMOUNTS = Object.fromEntries([
 	'kol_otpada_turizma_2014', 'kolicina_kom_otpada_zup_2014', 'stopa_oporabe_zup_2014',
 	'kolicina_kom_otpada_zup_2015', 'odlozeni_kom_otpad_zup_2015', 'stopa_oporabe_zup_2015',
 	'kolicina_kom_otpada_zup_2016', 'odlozeni_kom_otpad_zup_2016', 'stopa_oporabe_zup_2016',
-	'gradj_otpad_zu_kljucni_br', 'gradj_otpad_zu_rd_postupci',
 	'kolicina_kom_otpada_zup_2019', 'odl_nastalog_kom_otp_zup_2019', 'stopa_oporabe_zup_2019', 'gradj_ot_obr_2019_zu_pt',
 	'stopa_rec_zup_2022',
 	// municipalities (JLS)
-	'mj_ko_proiz_t_2015', 'mj_ko_proiz_t_2016', 'jls_stopa_odvajanja_poticajna_2019', 'jls_stopa_odv_otp_2022',
-	// facilities with tonnages
-	'kompostane_kolicina_2014', 'kompostane_kolicina_2015', 'kompostane_kolicina_2016', 'kompostane_2021', 'kompostane_2022',
-	'kompostane_2023', 'bioplinska_postrojenja_kolicine_2015', 'spaljivanje_suspaljivanje_kolicine_2015',
-	'energetski_oporabitelji_2019_r1', 'kazete_kolicine_2015', 'azbest_2019', 'azbest_2021', 'azbest_2022',
-	'odl_bior_ko_pt_2016', 'aodlbko2017', 'gradj_lokacije_2019', 'gradj_lokacije_2021', 'gradj_lokacije_2022', 'gradj_drob_2022'
+	'mj_ko_proiz_t_2015', 'mj_ko_proiz_t_2016', 'jls_stopa_odvajanja_poticajna_2019', 'jls_stopa_odv_otp_2022'
 ].map((name) => [name, { ready: true, featureInfo: true, group: false, exclusive: 'otpad-dev' }])); // one list, one at a time
 
 export default [
