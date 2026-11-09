@@ -124,6 +124,24 @@ const overlayFeature = (map, point) =>
 	);
 
 const MAX_BOUNDS = [[11.5, 41.2], [21.4, 47.7]];
+const CROATIA_VIEW = [[13.2, 42.2], [19.7, 46.7]]; // the first view, and the one the reset button goes back to
+
+/** Map button that shows the whole of Croatia again, facing north and flat (no rotation or tilt). */
+function resetViewControl() {
+	const group = document.createElement('div');
+	group.className = 'maplibregl-ctrl maplibregl-ctrl-group';
+	const button = Object.assign(document.createElement('button'), { type: 'button', title: 'Prikaži cijelu Hrvatsku' });
+	button.setAttribute('aria-label', 'Prikaži cijelu Hrvatsku');
+	button.innerHTML = '<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.6" style="display:block;margin:auto"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg>';
+	group.append(button);
+	return {
+		onAdd(map) {
+			button.onclick = () => map.fitBounds(CROATIA_VIEW, { bearing: 0, pitch: 0 });
+			return group;
+		},
+		onRemove: () => group.remove()
+	};
+}
 // The basemap's credit (its TileJSON's) in Croatian; a style source's own attribution overrides the TileJSON one.
 const BASEMAP_CREDIT = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> ' +
 	'<a href="https://www.openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> ' +
@@ -141,7 +159,8 @@ function croatiaStyle(style, mask) {
 	for (const source of Object.values(style.sources)) if (source.type === 'vector') Object.assign(source, { bounds: MAX_BOUNDS.flat(), attribution: BASEMAP_CREDIT });
 	style.sources[MASK_SOURCE] = { type: 'geojson', data: mask };
 	nonInteractive.add(MASK_SOURCE);
-	const labels = style.layers.filter((l) => l.type === 'symbol');
+	// No country names: the whole map is Croatia, and its own name sat in the middle of every view of it.
+	const labels = style.layers.filter((l) => l.type === 'symbol' && !l.id.startsWith('label_country'));
 	for (const l of labels) l.filter = l.filter ? ['all', l.filter, ['within', croatia]] : ['within', croatia];
 	style.layers = [
 		...style.layers.filter((l) => l.type !== 'symbol' && l.id !== 'water'),
@@ -166,7 +185,7 @@ export async function createMap (container, onFeatureSelect = () => {}, onLoadin
 	const map = new MapLibreMap({
 		container,
 		style: croatiaStyle(style, mask),
-		bounds: [[13.2, 42.2], [19.7, 46.7]],
+		bounds: CROATIA_VIEW,
 		maxBounds: MAX_BOUNDS, // all data is Croatian: keep the view close to it
 		// Each layer keeps tiles of this many zooms' worth of screens (default 5: ~30 tiles), so zooming in from Croatia to a
 		// street and back out still has the zoomed-out tiles; DGU tiles can't be cached by the browser and take ~1 s each.
@@ -174,6 +193,7 @@ export async function createMap (container, onFeatureSelect = () => {}, onLoadin
 		transformRequest: withSiteParams
 	});
 	map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right'); // top-right holds the debug readout
+	map.addControl(resetViewControl(), 'bottom-right');
 	map.addControl(new ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
 	onSelect = onFeatureSelect;
 	map.on('click', async (e) => {
