@@ -161,6 +161,9 @@ const HABITAT_2004_WMS = { ...HABITAT_2004, wms: BIOPORTAL_WMS, featureInfo: tru
 // 8.5, ≤0.4 s from 10), so a saved image until zoom 8.5; lines ≤0.5 s. In the habitat section as "2023 - more - …".
 const MARINE_2023 = { ready: true, panel: MorskaStanista2023, wms: BIOPORTAL_WMS, featureInfo: true, group: HABITATS };
 
+// Croatian names of data providers whose GetCapabilities give them in English, for the map's credits.
+export const PROVIDER_NAMES = { 'Croatian Agency for the Environment and Nature': 'Hrvatska agencija za okoliš i prirodu' };
+
 export default [
 	{
 		title: 'Otpad (AZO)',

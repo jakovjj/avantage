@@ -1,6 +1,7 @@
 // OGC services (WMS / WFS / WMTS): capabilities introspection and MapLibre source specs.
 import { WfsEndpoint, WmsEndpoint, WmtsEndpoint } from '@camptocamp/ogc-client';
 import { escapeHtml, fetchText, track } from './utils.js';
+import { PROVIDER_NAMES } from './sources.js';
 
 const ENDPOINTS = { WMS: WmsEndpoint, WFS: WfsEndpoint, WMTS: WmtsEndpoint };
 // WMS servers render each tile on request (~0.3-1 s), so bigger tiles mean 4x fewer requests and a less patchy map.
@@ -171,8 +172,10 @@ export async function getFeatures({ endpoint }, name, { bbox, maxBytes, signal }
 }
 
 /** Who publishes the data, as stated in GetCapabilities. */
-export const providerName = ({ info, capabilitiesUrl }) =>
-	info.provider?.name || info.provider?.contact?.organization || new URL(capabilitiesUrl).host;
+export function providerName({ info, capabilitiesUrl }) {
+	const name = info.provider?.name || info.provider?.contact?.organization || new URL(capabilitiesUrl).host;
+	return PROVIDER_NAMES[name] ?? name;
+}
 
 /** HTML credit for the map's attribution control. */
 export const attribution = (service) => escapeHtml(providerName(service));

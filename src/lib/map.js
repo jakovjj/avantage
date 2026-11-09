@@ -71,6 +71,10 @@ const overlayFeature = (map, point) =>
 	);
 
 const MAX_BOUNDS = [[11.5, 41.2], [21.4, 47.7]];
+// The basemap's credit (its TileJSON's) in Croatian; a style source's own attribution overrides the TileJSON one.
+const BASEMAP_CREDIT = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> ' +
+	'<a href="https://www.openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> ' +
+	'Podaci iz <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMapa</a>';
 
 /**
  * Basemap focused on Croatia (OSM boundary, the basemap's own source), applied before the first frame: no tiles
@@ -81,7 +85,7 @@ function croatiaStyle(style, mask) {
 	// The label filter tests every label against every border point (13,846), which made drawing tiles ~3× slower;
 	// ~500 m accuracy (900 points) costs nothing noticeable. The mask itself keeps the full border.
 	const croatia = { type: 'MultiPolygon', coordinates: mask.coordinates.slice(1).map((ring) => [simplify(ring, 0.005)]) };
-	for (const source of Object.values(style.sources)) if (source.type === 'vector') source.bounds = MAX_BOUNDS.flat();
+	for (const source of Object.values(style.sources)) if (source.type === 'vector') Object.assign(source, { bounds: MAX_BOUNDS.flat(), attribution: BASEMAP_CREDIT });
 	style.sources[MASK_SOURCE] = { type: 'geojson', data: mask };
 	nonInteractive.add(MASK_SOURCE);
 	const labels = style.layers.filter((l) => l.type === 'symbol');
