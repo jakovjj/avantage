@@ -17,7 +17,6 @@
 	const sharedSource = code && SOURCES.find((s) => Object.values(s.layers ?? {}).some((l) => l.shareCode === code));
 	const shared = sharedSource && Object.entries(sharedSource.layers).find(([, l]) => l.shareCode === code)[0];
 	const turnOn = (source) => (source === sharedSource ? [shared] : []);
-	let showAll = $state(false); // every layer of every service, not only the designed ones
 	// Services sharing a `section` (one survey each, e.g. Digitalni ortofoto) are listed together, one row per service, at
 	// the top of the sidebar.
 	const SECTIONS = Object.entries(Object.groupBy(SOURCES.filter((s) => s.section), (s) => s.section));
@@ -277,15 +276,7 @@
 					</details>
 				{/each}
 				{#each SOURCES.filter((s) => s.category) as source}<Source {map} {...source} title={source.category} part="ready" turnOn={turnOn(source)} reset={resets} {filterQuery} />{/each}
-				{#if showAll}
-					<hr />
-					<p class="raw-note">Niže navedeni slojevi prikazivat će se na karti u sirovom obliku.</p>
-					{#each SOURCES.filter((s) => !s.section) as source}<Source {map} {...source} part="rest" turnOn={turnOn(source)} reset={resets} {filterQuery} />{/each}
-				{/if}
 			{/if}
-			<div class="manual-options">
-				<label class="manual-toggle"><input type="checkbox" bind:checked={showAll} /> Prikaži sve slojeve</label>
-			</div>
 		</div>
 		<div class="active-layers" hidden={!showActiveOnly} onchange={focusAfterRemoval}>
 			<ul class="layer-stack" aria-label="Redoslijed slojeva">
@@ -406,14 +397,9 @@
 	h1 { font-size: 20px; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
 	input { flex: 1; min-width: 0; }
-	hr { width: 100%; margin: 10px 0 6px; border: 0; border-top: 1px solid #ccc; }
 	.section > summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 	.section > summary span { padding: 2px 4px; } /* like a service's title (Source.svelte) */
-	.raw-note { margin: 0 0 6px; color: #666; font-size: 12px; }
 	.layer-filter { flex: none; box-sizing: border-box; width: 100%; height: 28px; margin: 0 0 6px; }
-	.manual-toggle { display: flex; align-items: center; gap: 6px; margin: 12px 0; }
-	.manual-toggle input { flex: none; }
-	.manual-options { margin-top: auto; }
 	main { position: relative; min-width: 0; min-height: 0; }
 	.place-search { position: absolute; z-index: 3; top: 8px; left: 8px; display: block; width: min(360px, calc(100% - 120px)); margin: 0; }
 	.place-search input { box-sizing: border-box; width: 100%; height: 32px; padding: 4px 30px 4px 8px; background: #fff; }
