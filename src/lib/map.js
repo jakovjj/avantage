@@ -34,13 +34,15 @@ let colorIndexes;
 let activeSelection; // { sourceId }
 let onSelect = () => {}; // createMap's onFeatureSelect
 // Raster overlays that answer clicks anywhere (WMS GetFeatureInfo): overlay id → query(point) resolving to
-// { feature, outline } or nothing. While one is on, the whole map shows a pointer.
+// { feature, outline } or nothing. While an area layer among them is on, the whole map shows a pointer (thin lines
+// and points cover too little of it to deserve one everywhere).
 const clickableRasters = new Map();
 export const setClickable = (id, query) => (query ? clickableRasters.set(id, query) : clickableRasters.delete(id));
 // Overlays stack by geometry kind, points over lines over areas (and other rasters), and a click picks in that order.
 const KIND_RANKS = { lines: 1, points: 2 };
 const overlayRanks = new Map(); // overlay id → rank of its kind
 const rankOf = (source) => overlayRanks.get(source?.replace(/:overview$/, ''));
+const clickableAreas = () => [...clickableRasters.keys()].some((id) => !rankOf(id));
 let latestClick = 0;
 
 const isGeom = (t) => ['in', ['geometry-type'], ['literal', [t, `Multi${t}`]]];
@@ -134,7 +136,7 @@ export async function createMap (container, onFeatureSelect = () => {}, onLoadin
 		activeSelection = { sourceId: rendered.source };
 		onSelect(f, rendered.source, overlayLayers.get(rendered.source));
 	});
-	map.on('mousemove', (e) => (map.getCanvas().style.cursor = clickableRasters.size || overlayFeature(map, e.point) ? 'pointer' : ''));
+	map.on('mousemove', (e) => (map.getCanvas().style.cursor = clickableAreas() || overlayFeature(map, e.point) ? 'pointer' : ''));
 	map.on('dataloading', (e) => e.sourceId && map.getSource(e.sourceId)?.type === 'raster' && onLoading(true));
 	map.on('idle', () => onLoading(false));
 	return new Promise((resolve) => map.once('load', () => resolve(map)));
