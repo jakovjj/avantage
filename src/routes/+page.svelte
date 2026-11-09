@@ -273,7 +273,7 @@
 	<aside class="sidebar">
 		<header>
 			<h1>IKOP - Interaktivna karta okolišnih podataka</h1>
-			<button onclick={() => (resets++, filterQuery = '')}>Resetiraj</button>
+			{#if activeRows.length}<button onclick={() => (resets++, filterQuery = '')}>Resetiraj</button>{/if}
 		</header>
 		<nav aria-label="Slojevi">
 			<button aria-pressed={!showActiveOnly} onclick={() => showLayers(false)}>Svi slojevi</button>

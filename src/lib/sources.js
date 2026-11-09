@@ -146,14 +146,12 @@ const asOneRow = (series, panel, label) => {
 	}]));
 };
 
-// Divlji deponiji otpada u speleološkim objektima: the register as of 2021 (763 caves) and 2024 (825), merged into one
-// layer (89 KB gzipped together). Each cave has one page on cistopodzemlje.info, the only reliable key (the cadastre
-// number is often "-"): 727 caves are in both (the 2024 record wins), 98 only in 2024, 36 only in 2021.
+// Divlji deponiji otpada u speleološkim objektima: AZO's register as of 2025 (842 caves, 365 KB; each yearly layer is
+// the whole register then, so only the newest is shown). Each cave has a page on cistopodzemlje.info.
 // Names from zoom 12, without their "(sinonimi: …)".
 const CAVE = ['get', 'ime_obj'];
 const CAVE_DUMPS = {
 	ready: true, label: 'Divlji deponiji otpada u speleološkim objektima', panel: SpeleoDeponij, loadAll: true,
-	merge: ['dzzpnpis:divlji_deponiji_2021'], id: (f) => String(f.properties.link ?? f.properties.povez).replace(/^https?:\/\//, ''),
 	paint: { circle: { 'circle-color': '#8c510a', 'circle-radius': 5, 'circle-stroke-width': 1 } },
 	symbol: {
 		layout: {
@@ -203,34 +201,54 @@ const ORTHOPHOTOS = [
 	['orthophoto_1000', '1:1000 potres Zagreb'],
 	['orthophoto_500', '1:500 potres Sisačko-moslavačka županija']
 ].map(([name, title, whole, together]) => ({
-	title, section: 'Digitalni ortofoto (podloga)', type: 'WMS', url: DGU_WMS(name), authKey: DGU_KEY, exclusive: 'ortofoto', opacity: true,
+	title, section: 'Digitalni ortofoto (podloga)', stack: -1, type: 'WMS', url: DGU_WMS(name), authKey: DGU_KEY, exclusive: 'ortofoto', opacity: true,
 	...(whole && { format: 'image/jpeg' }), ...(together && { together: together.map(DGU_WMS) })
 }));
 
+// "Otpad (statistike)": every AZO layer whose records count amounts of waste (tonnes, kg per person, yearly tonnage of a facility,
+// recovery / recycling / separation rates), chosen by reading a record of each of the 98, not by title. Left out:
+// facility lists with only a capacity, sludge fields (areas), recycling yards, CGOs, "crne točke"; and, the user's call,
+// every facility layer (composting, biogas, incineration, energy recovery, landfills, construction waste on site and
+// crushers, asbestos cassettes) and the 2017 construction waste by type / treatment: only counties and municipalities. Drawn by the WMS,
+// clicked via GetFeatureInfo, shown in the plain properties table for now. County polygons are 27 MB each as WFS; a
+// click without the attribute list returns 1.5 MB of geometry, with it 0.3 KB.
+const AMOUNTS = Object.fromEntries([
+	// counties
+	'kol_otpada_turizma_2014', 'kolicina_kom_otpada_zup_2014', 'stopa_oporabe_zup_2014',
+	'kolicina_kom_otpada_zup_2015', 'odlozeni_kom_otpad_zup_2015', 'stopa_oporabe_zup_2015',
+	'kolicina_kom_otpada_zup_2016', 'odlozeni_kom_otpad_zup_2016', 'stopa_oporabe_zup_2016',
+	'kolicina_kom_otpada_zup_2019', 'odl_nastalog_kom_otp_zup_2019', 'stopa_oporabe_zup_2019', 'gradj_ot_obr_2019_zu_pt',
+	'stopa_rec_zup_2022',
+	// municipalities (JLS)
+	'mj_ko_proiz_t_2015', 'mj_ko_proiz_t_2016', 'jls_stopa_odvajanja_poticajna_2019', 'jls_stopa_odv_otp_2022'
+].map((name) => [name, { ready: true, featureInfo: true, group: false, exclusive: 'otpad-dev', opacity: true }])); // one list, one at a time
+
 export default [
 	{
-		title: 'Otpad (AZO)',
-		type: 'WMS',
-		url: 'https://servisi.azo.hr/otpad/wms?request=GetCapabilities',
-		layers: { odbaceni_otpad: { hide: true }, v_odlagalista_geom: { hide: true } }
-	},
-	{
 		title: 'Otpad – objekti (AZO)',
-		category: 'Otpad',
+		category: 'Otpad (lokacije)',
 		type: 'WFS',
 		url: 'https://servisi.azo.hr/otpad/wfs',
-		layers: { 'otpad:odbaceni_otpad': ODBACENI_OTPAD, 'otpad:v_odlagalista_geom': ODLAGALISTA }
+		layers: { 'otpad:odbaceni_otpad': ODBACENI_OTPAD, 'otpad:v_odlagalista_geom': ODLAGALISTA, 'otpad:depo_speleo_2025': CAVE_DUMPS }
+	},
+	{
+		title: 'Otpad (AZO)',
+		category: 'Otpad (statistike)',
+		stack: 3,
+		type: 'WMS',
+		url: 'https://servisi.azo.hr/otpad/wms?request=GetCapabilities',
+		wfs: 'https://servisi.azo.hr/otpad/wfs',
+		layers: { odbaceni_otpad: { hide: true }, v_odlagalista_geom: { hide: true }, ...AMOUNTS }
 	},
 	{
 		title: 'Bioportal',
 		category: 'Bioportal',
+		stack: 2,
 		type: 'WFS',
 		url: 'https://services.bioportal.hr/wfs',
 		layers: {
 			...asOneRow(PERISKE, Periska, 'Periske'),
 			...asOneRow(BEETLES, SaproksilniKornjas, 'Saproksilni kornjaši'),
-			'dzzpnpis:depo_speleo_2024': CAVE_DUMPS,
-			'dzzpnpis:divlji_deponiji_2021': { hide: true },
 			'dzzpnpis:zasticeno_podrucje_poligoni': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:zasticeno_podrucje_tocke': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:kopnena_stanista': { ...HABITAT_2004_WMS, exclusive: 'kopnena staništa', opacity: true },
@@ -281,6 +299,7 @@ export default [
 	{
 		title: 'Opasnost od poplava (Hrvatske vode)',
 		category: 'Hrvatske vode',
+		stack: 1,
 		type: 'WMS',
 		url: 'https://servisi.voda.hr/poplave_opasnosti/wms',
 		layers: {
