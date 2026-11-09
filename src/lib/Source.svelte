@@ -4,7 +4,7 @@
 </script>
 
 <script>
-	import { untrack } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { inspect, legendUrl, rasterSource } from './ogc.js';
 	import { RASTER_OPACITY, addOverlay, removeOverlay, setOpacity } from './map.js';
 	import { showWfs } from './wfs.js';
@@ -33,6 +33,11 @@
 	let searchSnapshot;
 	const active = $derived(Object.values(on).some(Boolean));
 	const hide = {}; // per layer name: removes it from the map
+	// When the list goes away (the full list hidden, a service removed), its layers leave the map with it; they stay
+	// stored, so they come back on when it's shown again.
+	onDestroy(() => {
+		for (const name in on) if (on[name]) hide[name]?.();
+	});
 
 	// Grey icon of what a layer looks like on the map (12×12 SVG content).
 	const KINDS = {
