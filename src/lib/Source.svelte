@@ -193,7 +193,7 @@
 {#if !(part && service && !listed.length) && (!filterQuery.trim() || !service || error || filtered.length)}
 <details bind:open={rootOpen}>
 	<summary>
-		<span class:active>{title ?? service?.info.title ?? url}</span> <small>{service?.type ?? type ?? ''}</small>
+		<span class:active>{title ?? service?.info.title ?? url}</span>
 		{#if onremove}<button onclick={(e) => (e.preventDefault(), onremove())} title="Ukloni">✕</button>{/if}
 	</summary>
 	{#if error}

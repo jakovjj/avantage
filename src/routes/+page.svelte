@@ -143,7 +143,11 @@
 		<input class="layer-filter" type="search" placeholder="Filtriraj slojeve" bind:value={filterQuery} />
 		{#if map}
 			{#each SOURCES.filter((s) => s.category) as source}<Source {map} {...source} title={source.category} part="ready" reset={resets} {showActiveOnly} {filterQuery} />{/each}
-			{#if showAll}{#each SOURCES as source}<Source {map} {...source} part="rest" reset={resets} {showActiveOnly} {filterQuery} />{/each}{/if}
+			{#if showAll}
+				<hr />
+				<p class="raw-note">Niže navedeni slojevi prikazivat će se na karti bez obrade.</p>
+				{#each SOURCES as source}<Source {map} {...source} part="rest" reset={resets} {showActiveOnly} {filterQuery} />{/each}
+			{/if}
 			{#each custom as source (source)}<Source {map} {...source} reset={resets} {showActiveOnly} {filterQuery} onremove={() => remove(source)} />{/each}
 		{/if}
 		<div class="manual-options">
@@ -215,6 +219,8 @@
 	h1 { font-size: 20px; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
 	input { flex: 1; min-width: 0; }
+	hr { width: 100%; margin: 10px 0 6px; border: 0; border-top: 1px solid #ccc; }
+	.raw-note { margin: 0 0 6px; color: #666; font-size: 12px; }
 	.layer-filter { flex: none; height: 1.5em; margin: 0 0 6px; padding-block: 0; }
 	.manual-toggle { display: flex; align-items: center; gap: 6px; margin: 12px 0; }
 	.manual-toggle input { flex: none; }

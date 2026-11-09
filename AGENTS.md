@@ -93,7 +93,7 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
   winner: a point beats a line beats an area. Every `featureInfo` layer of a higher kind than the map-drawn (GeoJSON)
   feature under the click is asked at once (`setClickable` registers each layer's query), and the first hit in rank
   order, then drawing order, wins; at an equal rank the map-drawn feature wins (it's drawn above all rasters). While
-  such a layer is on, the cursor is a pointer over the whole map.
+  such a layer of areas is on, the cursor is a pointer over the whole map; lines and points alone don't get one.
 - Overlays stack by the same kind (`addOverlay`'s `kind`): points over lines over areas and plain rasters, whatever
   order they're turned on in; rasters stay under the basemap labels, map-drawn features above them.
 
@@ -151,7 +151,8 @@ The sidebar lists only these on top, marked `ready`, under three categories name
 **Otpad** (AZO WFS), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
 **Hrvatske vode** (all 4 flood maps, the user's choice). Every other layer shows in its service's section only when
 "Prikaži sve slojeve" is ticked (a developer option at the bottom, next to "Dodaj ručno slojeve"); a service whose
-layers are all on top is left out there.
+layers are all on top is left out there. A thin grey rule and the user's note "Niže navedeni slojevi prikazivat će se
+na karti bez obrade." separate them from the ready layers (the one sentence allowed in the sidebar).
 
 - **Lokacije odbačenog otpada** (AZO) — WFS only (`otpad:odbaceni_otpad`; the WMS layer is hidden), `loadAll`
   (14,195 points, 1.35 MB gzipped). Dots coloured by
@@ -244,10 +245,13 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   gradients, animations or transitions, no colour themes/variables. A few lines per component is the target.
 - Sidebar: `Avantage` title, the layer filter, the three categories of ready layers, then (with "Prikaži sve
   slojeve") one `<details>` per service and the user's own services; at the bottom the two option checkboxes and the
-  URL form. No GetCapabilities ("`<TYPE> endpoint`") links in the sidebar: they put off ordinary users.
+  URL form. No GetCapabilities ("`<TYPE> endpoint`") links and no service type (WFS/WMS) in the sidebar: they put
+  off ordinary users.
 - A layer with the `opacity` tweak gets a native range slider under its row while it's on (0–1, default 0.8 like
   every raster), above its legend; it sets the tiles and the `overview` image.
-- The data provider (from GetCapabilities) is credited in the MapLibre attribution, not in the sidebar.
+- The data provider (from GetCapabilities) is credited in the MapLibre attribution, not in the sidebar. Credits are
+  Croatian: a provider named in English goes through `PROVIDER_NAMES` in `sources.js` (Bioportal's "Croatian Agency
+  for the Environment and Nature"), and the basemap's TileJSON credit is replaced by `BASEMAP_CREDIT` in `map.js`.
 - A layer row has an (i) after its type icon only when GetCapabilities gives an **official** description (`about` in
   `ogc.js`): an abstract that says more than the title (not the title again, "null", or the service's abstract); a
   metadata link alone isn't enough. It opens a box over the map, beside the sidebar and level with the row (one at a
