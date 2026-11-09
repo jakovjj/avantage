@@ -45,6 +45,17 @@ const rankOf = (source) => overlayRanks.get(source?.replace(/:overview$/, ''));
 const clickableAreas = () => [...clickableRasters.keys()].some((id) => !rankOf(id));
 let latestClick = 0;
 
+// Query parameters MapLibre adds to every request to a site (origin → { name: value }), e.g. a short-lived access key
+// that tile URLs, built once, can't carry.
+const siteParams = new Map();
+export const setSiteParams = (origin, params) => siteParams.set(origin, params);
+function withSiteParams(url) {
+	const u = new URL(url, location.href), params = siteParams.get(u.origin);
+	if (!params) return undefined;
+	for (const [name, value] of Object.entries(params)) u.searchParams.set(name, value);
+	return { url: u.href };
+}
+
 const isGeom = (t) => ['in', ['geometry-type'], ['literal', [t, `Multi${t}`]]];
 
 function overlayStyle(id) {
@@ -113,7 +124,8 @@ export async function createMap (container, onFeatureSelect = () => {}, onLoadin
 		container,
 		style: croatiaStyle(style, mask),
 		bounds: [[13.2, 42.2], [19.7, 46.7]],
-		maxBounds: MAX_BOUNDS // all data is Croatian: keep the view close to it
+		maxBounds: MAX_BOUNDS, // all data is Croatian: keep the view close to it
+		transformRequest: withSiteParams
 	});
 	map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right'); // top-right holds the debug readout
 	map.addControl(new ScaleControl({ maxWidth: 120, unit: 'metric' }), 'bottom-left');
