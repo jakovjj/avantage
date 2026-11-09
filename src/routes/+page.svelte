@@ -237,7 +237,7 @@
 			{#if googleMapsUrl(feature)}
 				<div class="maps">
 					<a href={googleMapsUrl(feature)} target="_blank" rel="noopener noreferrer" aria-label="Otvori u Google Maps">
-						<img src="/google-maps.svg" alt="Google Maps" />
+						<img src="google-maps.svg" alt="Google Maps" />
 					</a>
 					<button class:copied={shareCopied} type="button" onclick={() => shareGoogleMapsUrl(googleMapsUrl(feature))}>{shareCopied ? 'Kopirano' : 'Podijeli'}</button>
 				</div>
