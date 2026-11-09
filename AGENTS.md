@@ -210,7 +210,8 @@ na karti bez obrade." separate them from the ready layers (the one sentence allo
   caves) with 2021 (`divlji_deponiji_2021`, 763) `merge`d in: 89 KB gzipped together, 861 caves. Each cave has one
   page on cistopodzemlje.info, the `id` (the cadastre number is often "-"): 727 caves are in both (the 2024 record
   wins), 98 only in 2024, 36 only in 2021 (maybe cleaned up since). The AZO otpad WFS has the same register yearly
-  (`depo_speleo_2017…2025`, growing to 842), not used. Brown dots. Panel `SpeleoDeponij.svelte`: the cave's name
+  (`depo_speleo_2017…2025`, growing to 842), not used. Brown dots; from zoom 12 each cave's name beside it
+  (`symbol`, like Odlagališta; a `step` on zoom, without "(sinonimi: …)"; colliding names are dropped). Panel `SpeleoDeponij.svelte`: the cave's name
   ("(sinonimi: …)" moved to "Također: …"), length and depth as "18 m kanala, 14 m u dubinu" (number
   first; "duljina" and "dubina" read alike), cadastre number, the club that reported it, "Samo u popisu
   iz 2021." for a cave missing from 2024 (only 2021 has `povez`), and "Više na cistopodzemlje.info" (https).
