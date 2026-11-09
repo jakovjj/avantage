@@ -6,6 +6,7 @@
 <script>
 	import { onDestroy, untrack } from 'svelte';
 	import { inspect, legendUrl, rasterSource } from './ogc.js';
+	import { formatNumber } from './utils.js';
 	import { RASTER_OPACITY, addOverlay, removeOverlay, setOpacity } from './map.js';
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
@@ -47,6 +48,13 @@
 		heatmap: ['toplinska karta', '<rect x="1" y="1" width="3" height="3" opacity=".3"/><rect x="4.5" y="1" width="3" height="3" opacity=".6"/><rect x="8" y="1" width="3" height="3"/><rect x="1" y="4.5" width="3" height="3" opacity=".6"/><rect x="4.5" y="4.5" width="3" height="3"/><rect x="8" y="4.5" width="3" height="3" opacity=".6"/><rect x="1" y="8" width="3" height="3"/><rect x="4.5" y="8" width="3" height="3" opacity=".6"/><rect x="8" y="8" width="3" height="3" opacity=".3"/>'],
 		raster: ['slika', '<rect x="1" y="1.5" width="10" height="9" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M2 10l3-4 2 2.5 1.5-1.5L10 10Z"/>']
 	};
+	// A layer's note is its feature count or a status ("…", "približi kartu", an error); a row with `members` shows their
+	// total once all are counted, else the first status.
+	function rowNote(name) {
+		const notes = [name, ...(layers[name]?.members ?? [])].map((n) => note[n] ?? '');
+		const counts = notes.every((n) => typeof n === 'number');
+		return counts ? formatNumber(notes.reduce((a, b) => a + b)) : notes.find((n) => typeof n !== 'number');
+	}
 	const kindOf = (l) => (layers[l.name]?.heatmap ? 'heatmap' : l.kind);
 
 	// The page's reset button bumps `reset`: turn every layer off and clear the filter.
@@ -170,6 +178,8 @@
 		const id = `${url}#${name}`;
 		store(id, on[name]);
 		note[name] = '';
+		// A row with `members` turns those (hidden) layers on and off with it.
+		for (const m of layers[name]?.members ?? []) if (on[m] !== on[name]) (on[m] = on[name]), toggle(m);
 		if (!on[name]) return (delete opacity[name], hide[name]?.());
 		// Layers sharing an `exclusive` key work like radio buttons: turning one on turns the others off.
 		const set = layers[name]?.exclusive;
@@ -215,7 +225,7 @@
 				{/each}
 			</details>
 		{/each}
-		{#each sections.ungrouped as l (l.name)}{@render row(l, l.title)}{/each}
+		{#each sections.ungrouped as l (l.name)}{@render row(l, layers[l.name]?.label ?? l.title)}{/each}
 	{/if}
 </details>
 {/if}
@@ -245,7 +255,7 @@
 		<input type="checkbox" bind:checked={on[l.name]} onchange={() => toggle(l.name)} />
 		<span>
 			{text}
-			<small>{note[l.name] ?? ''}</small>
+			<small>{rowNote(l.name)}</small>
 		</span>
 		{#if icon}<svg viewBox="0 0 12 12" fill="currentColor"><title>{kind}</title>{@html icon}</svg>{/if}
 		{#if l.about}
@@ -257,6 +267,11 @@
 	{#if on[l.name] && layers[l.name]?.opacity}
 		<input type="range" min="0" max="1" step="0.05" title="Neprozirnost" value={opacity[l.name] ?? RASTER_OPACITY}
 			oninput={(e) => setOpacity(map, `${url}#${l.name}`, (opacity[l.name] = +e.currentTarget.value))} />
+	{/if}
+	{#if on[l.name] && layers[l.name]?.members}
+		<ul class="swatches">
+			{#each [l.name, ...layers[l.name].members] as n}<li><span style:background={layers[n].paint.circle['circle-color']}></span>{layers[n].legend}</li>{/each}
+		</ul>
 	{/if}
 	{#if on[l.name] && legend[l.name]}<img src={legend[l.name]} alt="" />{/if}
 {/snippet}
@@ -273,6 +288,8 @@
 	a, img, small, pre + button { display: block; margin: 0 0 6px 12px; }
 	label small, summary small { display: inline; margin: 0; }
 	label > span { flex: 1; }
+	.swatches { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 0 0 6px 31px; padding: 0; list-style: none; font-size: 12px; color: #666; }
+	.swatches span { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; }
 	input[type='range'] { display: block; box-sizing: border-box; width: calc(100% - 31px); margin: 0 0 6px 31px; }
 	svg { flex: none; align-self: center; width: 14px; height: 14px; color: #777; }
 	.info { display: flex; align-self: center; padding: 0; border: 0; background: none; cursor: pointer; }

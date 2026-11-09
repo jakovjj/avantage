@@ -15,7 +15,7 @@
 	const paired = $derived(names.length === codes.length);
 </script>
 
-<h5>Karta staništa 2004{LAYERS[p.tip] ? ` · ${LAYERS[p.tip]}` : ''}</h5>
+<h5>Karta staništa 2004{LAYERS[p.tip] ? ` - ${LAYERS[p.tip]}` : ''}</h5>
 <ol>
 	{#each codes as code, i}
 		<li class:main={i === 0}>
