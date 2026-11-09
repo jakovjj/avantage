@@ -317,13 +317,14 @@
 	</label>
 	<!-- The layer's own `opacity` tweak or its service's; with `together`, the other services' halves follow. -->
 	{#if on[l.name] && ((layers[l.name]?.opacity ?? slider) || (managing && isRaster(l)))}
-		{@const transparency = Math.round(100 * (1 - (opacity[l.name] ?? RASTER_OPACITY)))}
+		<!-- Opacity, not transparency: 100 % is the layer fully visible. -->
+		{@const percent = Math.round(100 * (opacity[l.name] ?? RASTER_OPACITY))}
 		<label class="opacity-control">
-			<span>Prozirnost <output>{transparency} %</output></span>
-			<input type="range" min="0" max="100" step="5" aria-label={`Prozirnost - ${text}`} aria-valuetext={`${transparency} % prozirno`} value={transparency}
+			<span>Prozirnost</span>
+			<input type="range" min="0" max="100" step="5" aria-label={`Prozirnost - ${text}`} aria-valuetext={`${percent} %`} value={percent}
 				oninput={(e) => {
 					const id = `${url}#${l.name}`;
-					opacity[l.name] = 1 - +e.currentTarget.value / 100;
+					opacity[l.name] = +e.currentTarget.value / 100;
 					for (const o of [id, ...(together ?? []).map((_, i) => `${id}+${i + 1}`)]) setOpacity(map, o, opacity[l.name]);
 				}} />
 		</label>
@@ -367,7 +368,6 @@
 	.swatches { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 0 0 6px 31px; padding: 0; list-style: none; font-size: 12px; color: #666; }
 	.swatches span { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; }
 	.opacity-control { display: block; margin: 2px 0 6px 31px; padding: 0; cursor: default; font-size: 12px; color: #666; }
-	.opacity-control > span { display: flex; justify-content: space-between; }
 	.opacity-control input { display: block; box-sizing: border-box; width: 100%; margin: 2px 0 0; }
 	svg { flex: none; align-self: center; width: 14px; height: 14px; color: #777; }
 	.info { display: flex; align-self: center; padding: 0; border: 0; background: none; cursor: pointer; }
