@@ -20,6 +20,7 @@ import OdbaceniOtpad, { STATUS_COLORS } from './panels/OdbaceniOtpad.svelte';
 import Odlagaliste, { MARKERS as LANDFILL_MARKERS } from './panels/Odlagaliste.svelte';
 import Staniste2016 from './panels/Staniste2016.svelte';
 import Staniste2004 from './panels/Staniste2004.svelte';
+import OtpadStatistike from './panels/OtpadStatistike.svelte';
 import MorskaStanista2023 from './panels/MorskaStanista2023.svelte';
 import Periska from './panels/Periska.svelte';
 import SaproksilniKornjas from './panels/SaproksilniKornjas.svelte';
@@ -220,18 +221,82 @@ const ORTHOPHOTOS = [
 // facility lists with only a capacity, sludge fields (areas), recycling yards, CGOs, "crne točke"; and, the user's call,
 // every facility layer (composting, biogas, incineration, energy recovery, landfills, construction waste on site and
 // crushers, asbestos cassettes) and the 2017 construction waste by type / treatment: only counties and municipalities. Drawn by the WMS,
-// clicked via GetFeatureInfo, shown in the plain properties table for now. County polygons are 27 MB each as WFS; a
+// clicked via GetFeatureInfo, with a panel highlighting the mapped indicator. County polygons are 27 MB each as WFS; a
 // click without the attribute list returns 1.5 MB of geometry, with it 0.3 KB.
-const AMOUNTS = Object.fromEntries([
-	// counties
-	'kol_otpada_turizma_2014', 'kolicina_kom_otpada_zup_2014', 'stopa_oporabe_zup_2014',
-	'kolicina_kom_otpada_zup_2015', 'odlozeni_kom_otpad_zup_2015', 'stopa_oporabe_zup_2015',
-	'kolicina_kom_otpada_zup_2016', 'odlozeni_kom_otpad_zup_2016', 'stopa_oporabe_zup_2016',
-	'kolicina_kom_otpada_zup_2019', 'odl_nastalog_kom_otp_zup_2019', 'stopa_oporabe_zup_2019', 'gradj_ot_obr_2019_zu_pt',
-	'stopa_rec_zup_2022',
-	// municipalities (JLS)
-	'mj_ko_proiz_t_2015', 'mj_ko_proiz_t_2016', 'jls_stopa_odvajanja_poticajna_2019', 'jls_stopa_odv_otp_2022'
-].map((name) => [name, { ready: true, featureInfo: true, group: false, exclusive: 'otpad-dev', opacity: true }])); // one list, one at a time
+const COMMUNAL_2019 = [
+	['nastalo', 'Proizvedeni komunalni otpad', 't'],
+	['kg_stan', 'Po stanovniku', 'kg'],
+	['oporaba_ko', 'Oporabljeni komunalni otpad', 't'],
+	['udio_opor', 'Stopa oporabe', '%'],
+	['odl_ko', 'Odloženi komunalni otpad', 't'],
+	['odl_nast', 'Udio odloženog u nastalom otpadu', '%'],
+	['br_stan', 'Broj stanovnika', '']
+];
+
+// Field names and units were checked against every record of the 18 WFS layers. Percent fields in 2022 also have
+// a fractional duplicate (stopa1/st_ju1); the panel uses the published percentage (stopa2/st_ju2).
+const AMOUNTS = Object.fromEntries(Object.entries({
+	kol_otpada_turizma_2014: {
+		metric: ['kol_kom_ot_t', 'Komunalni otpad iz turizma', 't'],
+		fields: [
+			['udio_otp_tur', 'Udio turizma u komunalnom otpadu županije', '%'],
+			['udio_zup_otpad', 'Udio u turističkom otpadu Hrvatske', '%']
+		]
+	},
+	kolicina_kom_otpada_zup_2014: {
+		metric: ['kol_otpada_t', 'Proizvedeni komunalni otpad', 't'],
+		fields: [['kol_kg_stanov', 'Po stanovniku', 'kg'], ['udio_zup_kom_ot', 'Udio u komunalnom otpadu Hrvatske', '%']]
+	},
+	stopa_oporabe_zup_2014: { metric: ['st_oporabe', 'Stopa oporabe komunalnog otpada', '%'] },
+	kolicina_kom_otpada_zup_2015: { metric: ['kg_stan', 'Proizvedeni komunalni otpad po stanovniku', 'kg'] },
+	odlozeni_kom_otpad_zup_2015: { metric: ['odl_kom', 'Odloženi komunalni otpad', 't'] },
+	stopa_oporabe_zup_2015: { metric: ['stopa_opor', 'Stopa oporabe komunalnog otpada', '%'] },
+	kolicina_kom_otpada_zup_2016: { metric: ['kg_stan', 'Proizvedeni komunalni otpad po stanovniku', 'kg'] },
+	odlozeni_kom_otpad_zup_2016: { metric: ['odl_ko', 'Odloženi komunalni otpad', 't'] },
+	stopa_oporabe_zup_2016: { metric: ['stopa_opor', 'Stopa oporabe komunalnog otpada', '%'] },
+	kolicina_kom_otpada_zup_2019: {
+		metric: ['kg_stan', 'Proizvedeni komunalni otpad po stanovniku', 'kg'], fields: COMMUNAL_2019
+	},
+	odl_nastalog_kom_otp_zup_2019: {
+		metric: ['odl_nast', 'Udio odloženog u nastalom komunalnom otpadu', '%'], fields: COMMUNAL_2019
+	},
+	stopa_oporabe_zup_2019: {
+		metric: ['udio_opor', 'Stopa oporabe komunalnog otpada', '%'], fields: COMMUNAL_2019
+	},
+	gradj_ot_obr_2019_zu_pt: {
+		metric: ['obradjeno', 'Obrađeni građevinski otpad', 't'],
+		fields: [
+			['nastalo', 'Nastali građevinski otpad', 't'],
+			['r_konacni', 'Oporaba konačnim postupcima', 't'],
+			['d_konacni', 'Zbrinjavanje konačnim postupcima', 't'],
+			['nasipavanj', 'Nasipavanje', 't'],
+			['preuzeto_u', 'Ukupno preuzeti otpad', 't'],
+			['hr_preuzet', 'Preuzeto iz Hrvatske', 't'],
+			['uvoz_preuz', 'Preuzeto iz uvoza', 't'],
+			['skl_1_1', 'Na skladištu 1. siječnja', 't'],
+			['skl_31_12', 'Na skladištu 31. prosinca', 't'],
+			['br_org_jed', 'Broj organizacijskih jedinica', '']
+		]
+	},
+	stopa_rec_zup_2022: { metric: ['stopa2', 'Stopa recikliranja komunalnog otpada', '%'] },
+	mj_ko_proiz_t_2015: { metric: ['mko_tone', 'Proizvedeni miješani komunalni otpad', 't'] },
+	mj_ko_proiz_t_2016: { metric: ['mko_2016_t', 'Proizvedeni miješani komunalni otpad', 't'] },
+	jls_stopa_odvajanja_poticajna_2019: {
+		metric: ['stopa_19', 'Stopa odvajanja komunalnog otpada', '%'],
+		fields: [
+			['ko_ju', 'Komunalni otpad u javnoj usluzi', 't'],
+			['mko_so1', 'Sakupljeni miješani komunalni otpad (SO-1)', 't'],
+			['mko_so3', 'Sakupljeni miješani komunalni otpad (SO-3)', 't'],
+			['odv_so1', 'Odvojeno sakupljeni otpad (SO-1)', 't'],
+			['odv_mrd', 'Mobilna reciklažna dvorišta', 't'],
+			['odv_srd', 'Stacionarna reciklažna dvorišta', 't']
+		]
+	},
+	jls_stopa_odv_otp_2022: { metric: ['st_ju2', 'Stopa odvajanja otpada u javnoj usluzi', '%'] }
+}).map(([name, statistics]) => [name, {
+	ready: true, featureInfo: true, group: false, exclusive: 'otpad-dev', opacity: true, panel: OtpadStatistike,
+	statistics: { ...statistics, year: Number(name.match(/\d{4}/)[0]) }
+}]));
 
 export default [
 	{
