@@ -1,5 +1,5 @@
 // OGC services (WMS / WFS / WMTS): capabilities introspection and MapLibre source specs.
-import { WfsEndpoint, WmsEndpoint, WmtsEndpoint } from '@camptocamp/ogc-client';
+import { WfsEndpoint, WmsEndpoint, WmtsEndpoint, clearCache, setCacheExpiryDuration } from '@camptocamp/ogc-client';
 import { escapeHtml, fetchText, track } from './utils.js';
 import { PROVIDER_NAMES } from './sources.js';
 
@@ -99,6 +99,11 @@ function listLayers(type, endpoint, kinds) {
 
 // One read per service: it's listed in two parts of the sidebar, and WMS-drawn WFS layers ask its WMS on every toggle.
 const inspected = new Map();
+// ogc-client also keeps capabilities in the browser (1 h) and deletes expired ones before every read; when several
+// services load at once (the 10 orthophotos), two deletions collide and one fails ("reading 'headers'"). Capabilities
+// answer in ~0.1 s, so its store is emptied once per page load, before any read, and nothing in it expires meanwhile.
+setCacheExpiryDuration(365 * 24 * 3600 * 1000);
+const storeCleared = clearCache().catch(() => {});
 
 /** Reads GetCapabilities (once, unless it failed); without a known type, tries each service type in turn. */
 export function inspect(url, type = guessType(url)) {
@@ -108,6 +113,7 @@ export function inspect(url, type = guessType(url)) {
 }
 
 async function readCapabilities(url, type) {
+	await storeCleared;
 	const errors = [];
 	for (const t of type ? [type] : Object.keys(ENDPOINTS)) {
 		try {
