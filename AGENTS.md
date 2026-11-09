@@ -127,6 +127,8 @@ Keep these to what cannot be inferred automatically. Supported keys:
   feature's `properties` and the layer's tweaks (`layer`).
 - `loadAll` — WFS only: download the whole layer once, without the 100 KB cap, and never switch to viewport mode.
   Only after measuring that the full download is acceptable (compressed size, time).
+- `merge` — WFS with `loadAll`: names of other layers of the same service loaded whole into this one; a feature in
+  several counts once, by the `id` hook, and the layer's own copy wins (hide the merged layers).
 - `images` — `{ name: SVG markup }` icons for `symbol`, drawn at half the SVG's pixel size so their edges stay sharp.
 - `symbol` — `{ layout, paint }` of one extra MapLibre symbol layer on top of the layer's own: icons (markers circles
   can't draw, e.g. triangles) and labels (`text-font` must be a basemap font: `Noto Sans Regular/Bold/Italic`).
@@ -204,6 +206,14 @@ na karti bez obrade." separate them from the ready layers (the one sentence allo
   one sentence of details ("1 jedinka na 2 m dubine, od toga…"; "Dojavljeno …, s fotografijom"), and "Točnost
   lokacije ±… m" small at the bottom. Nouns after numbers use `plural` (`utils.js`).
   Dates go through `formatDate` (`utils.js`): "22.7.2019.".
+- **Divlji deponiji otpada u speleološkim objektima** (Bioportal) — the register as of 2024 (`depo_speleo_2024`, 825
+  caves) with 2021 (`divlji_deponiji_2021`, 763) `merge`d in: 89 KB gzipped together, 861 caves. Each cave has one
+  page on cistopodzemlje.info, the `id` (the cadastre number is often "-"): 727 caves are in both (the 2024 record
+  wins), 98 only in 2024, 36 only in 2021 (maybe cleaned up since). The AZO otpad WFS has the same register yearly
+  (`depo_speleo_2017…2025`, growing to 842), not used. Brown dots. Panel `SpeleoDeponij.svelte`: the cave's name
+  ("(sinonimi: …)" moved to "Također: …"), length and depth as "18 m kanala, 14 m u dubinu" (number
+  first; "duljina" and "dubina" read alike), cadastre number, the club that reported it, "Samo u popisu
+  iz 2021." for a cave missing from 2024 (only 2021 has `povez`), and "Više na cistopodzemlje.info" (https).
 - **Karta morskih staništa 2023** (Bioportal `morska_stanista_p_1_1` 31,993 polygons, `_l_1_1` 15,455 lines,
   `_pt_1_1` 62,144 points; 200 polygons ≈ 3 MB as WFS) — all 3 drawn by the WMS with `featureInfo` (~0.05 s), rows
   labelled "2023 - more - poligoni / linije / točke". Polygons and points take ~4 s per 512 px view of Croatia, so
