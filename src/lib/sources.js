@@ -180,6 +180,15 @@ const HABITAT_2004_WMS = { ...HABITAT_2004, wms: BIOPORTAL_WMS, featureInfo: tru
 // 8.5, ≤0.4 s from 10), so a saved image until zoom 8.5; lines ≤0.5 s. In the habitat section as "2023 - more - …".
 const MARINE_2023 = { ready: true, panel: MorskaStanista2023, wms: BIOPORTAL_WMS, featureInfo: true, group: HABITATS };
 
+// Category icons in the sidebar (16×16 SVG content, drawn with the text colour).
+const ICONS = {
+	waste: '<path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5"/>',
+	chart: '<path d="M2.5 13.5h11M4.5 11V8M8 11V4.5M11.5 11V6.5"/>',
+	nature: '<path d="M3.5 12.5c0-5 3.5-9 9-9 0 5.5-3.5 9-9 9Z"/><path d="M3.5 12.5l5-5"/>',
+	water: '<path d="M8 2.5S4.5 6.8 4.5 9.5a3.5 3.5 0 0 0 7 0C11.5 6.8 8 2.5 8 2.5Z"/>',
+	photo: '<rect x="2.5" y="3.5" width="11" height="9"/><path d="M2.5 11l3-3 2.5 2.5 2-2 3.5 3.5"/>'
+};
+
 // Croatian names of data providers whose GetCapabilities give them in English, for the map's credits.
 export const PROVIDER_NAMES = { 'Croatian Agency for the Environment and Nature': 'Hrvatska agencija za okoliš i prirodu' };
 
@@ -189,20 +198,19 @@ export const PROVIDER_NAMES = { 'Croatian Agency for the Environment and Nature'
 const DGU_KEY = 'https://geoportal.dgu.hr/api/authkey/userAuthKey';
 // A single year covers only the east or the west half and isn't cut cleanly, so those a two-year composite holds are
 // left out; the newest pair (2024 west, 2025/2026 east, both transparent PNG) is drawn together as one row (`together`).
+// Newest first. The earthquake surveys (1:1000 Zagreb, 1:500 Sisačko-moslavačka) cover only those areas, so they're left out.
 const DGU_WMS = (name) => `https://geoportal.dgu.hr/services/auth/inspire/${name}/wms`;
 const ORTHOPHOTOS = [
-	['orthophoto_2011', '2011.'],
-	['orthophoto_2014-2016', '2014.-2016.'],
-	['orthophoto_2017_2018', '2017./2018.'],
-	['orthophoto_2019_2020', '2019./2020.'],
-	['orthophoto_2021_2022', '2021./2022.'],
-	['orthophoto_lidar_2022_2023', '2022./2023.'], // the LIDAR survey's orthophoto
-	['orthophoto_2023_2024', '2023./2024.'],
 	['orthophoto_2024', '2024./2025.', ['orthophoto_2025_2026']],
-	['orthophoto_1000', '1:1000 potres Zagreb'],
-	['orthophoto_500', '1:500 potres Sisačko-moslavačka županija']
+	['orthophoto_2023_2024', '2023./2024.'],
+	['orthophoto_lidar_2022_2023', '2022./2023.'], // the LIDAR survey's orthophoto
+	['orthophoto_2021_2022', '2021./2022.'],
+	['orthophoto_2019_2020', '2019./2020.'],
+	['orthophoto_2017_2018', '2017./2018.'],
+	['orthophoto_2014-2016', '2014.-2016.'],
+	['orthophoto_2011', '2011.']
 ].map(([name, title, together]) => ({
-	title, section: 'Digitalni ortofoto (podloga)', stack: -1, type: 'WMS', url: DGU_WMS(name), authKey: DGU_KEY, exclusive: 'ortofoto', opacity: true,
+	title, section: 'Digitalni ortofoto (podloga)', icon: ICONS.photo, stack: -1, type: 'WMS', url: DGU_WMS(name), authKey: DGU_KEY, exclusive: 'ortofoto', opacity: true,
 	clipToCroatia: true,
 	...(together && { together: together.map(DGU_WMS) })
 }));
@@ -229,6 +237,7 @@ export default [
 	{
 		title: 'Otpad – objekti (AZO)',
 		category: 'Otpad (lokacije)',
+		icon: ICONS.waste,
 		type: 'WFS',
 		url: 'https://servisi.azo.hr/otpad/wfs',
 		layers: { 'otpad:odbaceni_otpad': ODBACENI_OTPAD, 'otpad:v_odlagalista_geom': ODLAGALISTA, 'otpad:depo_speleo_2025': CAVE_DUMPS }
@@ -236,6 +245,7 @@ export default [
 	{
 		title: 'Otpad (AZO)',
 		category: 'Otpad (statistike)',
+		icon: ICONS.chart,
 		stack: 3,
 		type: 'WMS',
 		url: 'https://servisi.azo.hr/otpad/wms?request=GetCapabilities',
@@ -245,6 +255,7 @@ export default [
 	{
 		title: 'Bioportal',
 		category: 'Bioportal',
+		icon: ICONS.nature,
 		stack: 1, // habitats; the sensitivity maps (HEATMAP) have 2
 		type: 'WFS',
 		url: 'https://services.bioportal.hr/wfs',
@@ -301,6 +312,7 @@ export default [
 	{
 		title: 'Opasnost od poplava (Hrvatske vode)',
 		category: 'Hrvatske vode',
+		icon: ICONS.water,
 		stack: 4,
 		type: 'WMS',
 		url: 'https://servisi.voda.hr/poplave_opasnosti/wms',

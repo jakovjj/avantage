@@ -48,6 +48,7 @@
 	let showPlaceResults = $state(false);
 	let placeSearchTimer, placeSearchController;
 	let downloads = $state(0), drawing = $state(false); // the loading bar shows while either is busy
+	let sidebarOpen = $state(false); // phones only: the sidebar slides over the map, see the narrow-screen CSS
 	watchDownloads((n) => (downloads = n));
 
 	function selectFeature(feature, sourceId, layer = {}) {
@@ -257,10 +258,14 @@
 {#if downloads || drawing}<div class="loading"><div></div></div>{/if}
 
 <div class="layout" class:with-details={selectedFeature}>
-	<aside class="sidebar">
+	<aside class="sidebar" class:open={sidebarOpen} id="sidebar">
 		<header>
-			<h1>IKOP - Interaktivna karta okolišnih podataka</h1>
-			{#if activeRows.length}<button onclick={() => (resets++, filterQuery = '')}>Resetiraj</button>{/if}
+			<img class="logo" src="favicon.svg" alt="" />
+			<div class="brand">
+				<h1>IKOP</h1>
+				<p>Interaktivna karta okolišnih podataka</p>
+			</div>
+			<button class="close-sidebar" aria-label="Zatvori slojeve" onclick={() => (sidebarOpen = false)}>✕</button>
 		</header>
 		<nav aria-label="Slojevi">
 			<button aria-pressed={!showActiveOnly} onclick={() => showLayers(false)}>Svi slojevi</button>
@@ -271,7 +276,10 @@
 			{#if map}
 				{#each SECTIONS as [name, services] (name)}
 					<details class="section" bind:open={sectionOpen[name]}>
-						<summary><span>{name}</span></summary>
+						<summary>
+							{#if services[0].icon}<svg class="category-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true">{@html services[0].icon}</svg>{/if}
+							<span>{name}</span>
+						</summary>
 						{#each services as source}<Source {map} {...source} flat open={sectionOpen[name]} reset={resets} {filterQuery} />{/each}
 					</details>
 				{/each}
@@ -306,10 +314,19 @@
 					</li>
 				{/each}
 			</ul>
-			<button class="add-layer" bind:this={addLayerButton} onclick={async () => { showLayers(false); await tick(); layerFilter.focus(); }}>Dodaj sloj</button>
+			<div class="active-actions">
+				<button class="add-layer" bind:this={addLayerButton} onclick={async () => { showLayers(false); await tick(); layerFilter.focus(); }}>Dodaj sloj</button>
+				{#if activeRows.length}
+					<button class="reset" title="Isključi sve slojeve" onclick={() => (resets++, filterQuery = '')}>
+						<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.5-3.5M3 2.5v2.5h2.5" /></svg>
+						Resetiraj
+					</button>
+				{/if}
+			</div>
 		</div>
 	</aside>
 	<main bind:this={container}>
+		<button class="open-sidebar" aria-controls="sidebar" aria-expanded={sidebarOpen} onclick={() => (sidebarOpen = true)}>Slojevi</button>
 		<form class="place-search" onsubmit={(event) => { event.preventDefault(); if (placeResults[0]) selectPlace(placeResults[0]); }}>
 			<input
 				aria-label="Pretraži mjesta"
@@ -360,12 +377,13 @@
 {/if}
 
 <style>
-	:global(body) { margin: 0; height: 100dvh; font: 14px system-ui, sans-serif; color-scheme: light; background: #fff; color: #222; }
+	/* accent-color: checkboxes and sliders in the logo's green. */
+	:global(body) { margin: 0; height: 100dvh; font: 14px system-ui, sans-serif; color-scheme: light; background: #fff; color: #222; accent-color: #2e7d32; }
 	.layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: 100%; }
 	.sidebar { display: flex; flex-direction: column; min-height: 0; padding: 0 8px 0 16px; border-right: 1px solid #ddd; user-select: none; }
 	nav { display: flex; flex: none; border-bottom: 1px solid #ddd; }
 	nav button { flex: 1; padding: 8px 4px; border: 0; border-bottom: 2px solid transparent; background: #fff; color: #666; font: inherit; cursor: pointer; }
-	nav button[aria-pressed='true'] { border-bottom-color: #222; color: #222; }
+	nav button[aria-pressed='true'] { border-bottom-color: #2e7d32; color: #2e7d32; }
 	nav button:hover { background: #f5f5f5; }
 	/* The lists scroll: 8px of the sidebar's right padding sits inside them, between the row icons and the scrollbar. */
 	.catalogue, .active-layers { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 8px 16px 0; }
@@ -382,7 +400,7 @@
 	.drop-before::after, .drop-after::after { content: ''; position: absolute; left: 0; right: 0; height: 2px; background: #222; pointer-events: none; }
 	.drop-before::after { top: 0; }
 	.drop-after::after { bottom: -1px; }
-	.add-layer { display: block; margin: 12px auto 0; }
+	.active-actions { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px; }
 	/* Overlays the map: resizing the map container would move and re-centre the map. */
 	/* border-box: the controls and readout are shifted by exactly this 320px, padding included. */
 	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; box-sizing: border-box; z-index: 10; display: flex; flex-direction: column; overflow-y: auto; padding: 12px 12px 0; border-left: 1px solid #ddd; background: #fff; }
@@ -393,12 +411,23 @@
 	.maps a, .maps button { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: LinkText; font: inherit; text-decoration: underline; cursor: pointer; }
 	.maps img { width: 20px; height: 20px; }
 	.maps .external { width: 11px; height: 11px; }
-	header { display: flex; justify-content: space-between; align-items: center; }
-	h1 { font-size: 20px; }
+	/* Logo, "IKOP" and the full name in grey below it. */
+	header { display: flex; align-items: center; gap: 10px; padding: 14px 0 12px; }
+	.logo { flex: none; width: 40px; height: 40px; }
+	.brand { flex: 1; min-width: 0; }
+	h1 { margin: 0; font-size: 22px; line-height: 1.1; letter-spacing: 0.5px; color: #1f2a24; }
+	.brand p { margin: 2px 0 0; font-size: 12px; color: #666; }
+	.reset { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid #ccc; background: #fff; color: #444; font: inherit; font-size: 13px; cursor: pointer; }
+	.reset:hover { border-color: #2e7d32; color: #2e7d32; }
+	.open-sidebar, .close-sidebar { display: none; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
 	input { flex: 1; min-width: 0; }
-	.section > summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
-	.section > summary span { padding: 2px 4px; } /* like a service's title (Source.svelte) */
+	/* Like a category (Source.svelte). */
+	.section { border-bottom: 1px solid #eee; }
+	.section > summary { cursor: pointer; font-weight: 600; font-size: 15px; padding: 10px 0; }
+	.section > summary::marker { color: #2e7d32; }
+	.section > summary span { padding: 2px 4px; }
+	.category-icon { width: 18px; height: 18px; margin: 0 4px 0 2px; vertical-align: -4px; color: #2e7d32; }
 	.layer-filter { flex: none; box-sizing: border-box; width: 100%; height: 28px; margin: 0 0 6px; }
 	main { position: relative; min-width: 0; min-height: 0; }
 	.place-search { position: absolute; z-index: 3; top: 8px; left: 8px; display: block; width: min(360px, calc(100% - 120px)); margin: 0; }
@@ -420,4 +449,17 @@
 	code.details-open { right: 328px; }
 	/* Map controls move aside so the panel doesn't cover them. */
 	.layout.with-details :global(.maplibregl-ctrl-bottom-right) { right: 320px; }
+	/* Phones: the map takes the whole screen. The sidebar opens over it from "Slojevi", and the details panel takes the
+	   lower half, so the clicked place stays in view. */
+	@media (max-width: 700px) {
+		.layout { grid-template-columns: minmax(0, 1fr); }
+		.sidebar { position: fixed; top: 0; bottom: 0; left: 0; z-index: 12; display: none; width: min(320px, 88vw); box-sizing: border-box; background: #fff; }
+		.sidebar.open { display: flex; }
+		.open-sidebar { position: absolute; z-index: 3; top: 8px; left: 8px; display: block; height: 32px; }
+		.close-sidebar { display: block; flex: none; }
+		.place-search { left: 84px; width: calc(100% - 92px); }
+		code { display: none; }
+		.details { top: auto; width: 100%; height: 50dvh; border-left: 0; border-top: 1px solid #ddd; }
+		.layout.with-details :global(.maplibregl-ctrl-bottom-right) { right: 0; bottom: 50dvh; }
+	}
 </style>
