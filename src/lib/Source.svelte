@@ -26,7 +26,7 @@
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, layers = {}, authKey, format, together, exclusive, part, flat = false, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	let { map, url, type, title, layers = {}, authKey, format, together, exclusive, opacity: slider, part, flat = false, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
 	// `flat`: the service's rows sit straight in a section of the page (`open` when it is), its one layer named `title`.
 	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
 	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
@@ -295,9 +295,14 @@
 			</button>
 		{/if}
 	</label>
-	{#if on[l.name] && layers[l.name]?.opacity}
+	<!-- The layer's own `opacity` tweak or its service's; with `together`, the other services' halves follow. -->
+	{#if on[l.name] && (layers[l.name]?.opacity ?? slider)}
 		<input type="range" min="0" max="1" step="0.05" title="Neprozirnost" value={opacity[l.name] ?? RASTER_OPACITY}
-			oninput={(e) => setOpacity(map, `${url}#${l.name}`, (opacity[l.name] = +e.currentTarget.value))} />
+			oninput={(e) => {
+				const id = `${url}#${l.name}`;
+				opacity[l.name] = +e.currentTarget.value;
+				for (const o of [id, ...(together ?? []).map((_, i) => `${id}+${i + 1}`)]) setOpacity(map, o, opacity[l.name]);
+			}} />
 	{/if}
 	{#if on[l.name] && layers[l.name]?.members}
 		<ul class="swatches">

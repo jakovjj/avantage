@@ -203,7 +203,7 @@ const ORTHOPHOTOS = [
 	['orthophoto_1000', '1:1000 potres Zagreb'],
 	['orthophoto_500', '1:500 potres Sisačko-moslavačka županija']
 ].map(([name, title, whole, together]) => ({
-	title, section: 'Digitalni ortofoto (podloga)', type: 'WMS', url: DGU_WMS(name), authKey: DGU_KEY, exclusive: 'ortofoto',
+	title, section: 'Digitalni ortofoto (podloga)', type: 'WMS', url: DGU_WMS(name), authKey: DGU_KEY, exclusive: 'ortofoto', opacity: true,
 	...(whole && { format: 'image/jpeg' }), ...(together && { together: together.map(DGU_WMS) })
 }));
 
