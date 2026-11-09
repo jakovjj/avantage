@@ -29,7 +29,7 @@
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, section, layers = {}, authKey, format, together, clipToCroatia, exclusive, opacity: slider, wfs, stack, part, flat = false, open = false, turnOn = [], reset = 0, filterQuery = '' } = $props();
+	let { map, url, type, title, section, icon, layers = {}, authKey, format, together, clipToCroatia, exclusive, opacity: slider, wfs, stack, part, flat = false, open = false, turnOn = [], reset = 0, filterQuery = '' } = $props();
 	// `turnOn`: layer names to turn on at load besides the stored ones (a shared link's layer).
 	// `flat`: the service's rows sit straight in a section of the page (`open` when it is), its one layer named `title`.
 	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
@@ -268,8 +268,9 @@
 
 {#if !(part && service && !listed.length) && (!filterQuery.trim() || !service || error || filtered.length)}
 {#if flat}{@render body()}{:else}
-<details bind:open={rootOpen}>
+<details class="category" bind:open={rootOpen}>
 	<summary>
+		{#if icon}<svg class="category-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" aria-hidden="true">{@html icon}</svg>{/if}
 		<span class:active>{title ?? service?.info.title ?? url}</span>
 	</summary>
 	{@render body()}
@@ -356,8 +357,12 @@
 <style>
 	summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
 	summary span { padding: 2px 4px; }
-	summary span.active { background: #e8eef5; }
-	details.group.active > summary span { background: #eaf2e8; }
+	/* A category or group with layers on shows in the accent green (the logo's). */
+	summary span.active, details.group.active > summary span { color: #2e7d32; }
+	details.category { border-bottom: 1px solid #eee; }
+	details.category > summary { padding: 10px 0; font-size: 15px; }
+	details.category > summary::marker, details.group > summary::marker { color: #2e7d32; }
+	.category-icon { width: 18px; height: 18px; margin: 0 4px 0 2px; vertical-align: -4px; color: #2e7d32; }
 	details.group { margin: 0 0 0 12px; }
 	details.group > summary { font-weight: 500; font-size: 14px; padding: 6px 0; }
 	label { display: flex; gap: 6px; align-items: baseline; padding: 3px 0 3px 12px; cursor: pointer; }
