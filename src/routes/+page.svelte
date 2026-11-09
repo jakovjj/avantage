@@ -285,6 +285,7 @@
 				{/each}
 				{#each SOURCES.filter((s) => s.category) as source}<Source {map} {...source} title={source.category} part="ready" turnOn={turnOn(source)} reset={resets} {filterQuery} />{/each}
 			{/if}
+			{#if activeRows.length}<div class="actions">{@render resetButton()}</div>{/if}
 		</div>
 		<div class="active-layers" hidden={!showActiveOnly} onchange={focusAfterRemoval}>
 			<ul class="layer-stack" aria-label="Redoslijed slojeva">
@@ -314,17 +315,22 @@
 					</li>
 				{/each}
 			</ul>
-			<div class="active-actions">
-				<button class="add-layer" bind:this={addLayerButton} onclick={async () => { showLayers(false); await tick(); layerFilter.focus(); }}>Dodaj sloj</button>
-				{#if activeRows.length}
-					<button class="reset" title="Isključi sve slojeve" onclick={() => (resets++, filterQuery = '')}>
-						<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.5-3.5M3 2.5v2.5h2.5" /></svg>
-						Resetiraj
-					</button>
-				{/if}
+			<div class="actions">
+				<button class="action" bind:this={addLayerButton} onclick={async () => { showLayers(false); await tick(); layerFilter.focus(); }}>
+					<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M8 3v10M3 8h10" /></svg>
+					Dodaj sloj
+				</button>
+				{#if activeRows.length}{@render resetButton()}{/if}
 			</div>
 		</div>
 	</aside>
+	<!-- "Resetiraj" turns every layer off; it sits under both lists while any layer is on. -->
+	{#snippet resetButton()}
+		<button class="action" title="Isključi sve slojeve" onclick={() => (resets++, filterQuery = '')}>
+			<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" aria-hidden="true"><path d="M3 8a5 5 0 1 0 1.5-3.5M3 2.5v2.5h2.5" /></svg>
+			Resetiraj
+		</button>
+	{/snippet}
 	<main bind:this={container}>
 		<button class="open-sidebar" aria-controls="sidebar" aria-expanded={sidebarOpen} onclick={() => (sidebarOpen = true)}>Slojevi</button>
 		<form class="place-search" onsubmit={(event) => { event.preventDefault(); if (placeResults[0]) selectPlace(placeResults[0]); }}>
@@ -400,7 +406,7 @@
 	.drop-before::after, .drop-after::after { content: ''; position: absolute; left: 0; right: 0; height: 2px; background: #222; pointer-events: none; }
 	.drop-before::after { top: 0; }
 	.drop-after::after { bottom: -1px; }
-	.active-actions { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px; }
+	.actions { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 12px; }
 	/* Overlays the map: resizing the map container would move and re-centre the map. */
 	/* border-box: the controls and readout are shifted by exactly this 320px, padding included. */
 	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; box-sizing: border-box; z-index: 10; display: flex; flex-direction: column; overflow-y: auto; padding: 12px 12px 0; border-left: 1px solid #ddd; background: #fff; }
@@ -417,8 +423,8 @@
 	.brand { flex: 1; min-width: 0; }
 	h1 { margin: 0; font-size: 22px; line-height: 1.1; letter-spacing: 0.5px; color: #1f2a24; }
 	.brand p { margin: 2px 0 0; font-size: 12px; color: #666; }
-	.reset { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid #ccc; background: #fff; color: #444; font: inherit; font-size: 13px; cursor: pointer; }
-	.reset:hover { border-color: #2e7d32; color: #2e7d32; }
+	.action { flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid #ccc; background: #fff; color: #444; font: inherit; font-size: 13px; cursor: pointer; }
+	.action:hover { border-color: #2e7d32; color: #2e7d32; }
 	.open-sidebar, .close-sidebar { display: none; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
 	input { flex: 1; min-width: 0; }

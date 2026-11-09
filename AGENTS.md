@@ -348,7 +348,8 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   Basemap tiles and re-tiling already loaded GeoJSON don't count.
 - Above the zoom buttons (bottom right) a button "Prikaži cijelu Hrvatsku" (`resetViewControl` in `map.js`) goes back
   to the first view, `CROATIA_VIEW`, facing north and flat (rotation and tilt reset).
-- "Resetiraj" (turns every layer off) sits under the "Aktivni slojevi" list, beside "Dodaj sloj", while any layer is on.
+- "Resetiraj" (turns every layer off) sits under both lists while any layer is on: under the categories in "Svi slojevi",
+  and beside "Dodaj sloj" under "Aktivni slojevi". Both buttons share one style (`.action`: icon, thin grey border, green on hover).
 - Debug readout: `lat, lon, z zoom` (two decimals each) in the **top-right** corner of the map. Map controls must
   not cover it. Hidden on phones.
 - Phones (≤ 700 px wide): the map fills the screen; the sidebar is hidden and opens over the map from "Slojevi"
