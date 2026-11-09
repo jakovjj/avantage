@@ -265,14 +265,14 @@
 	}
 </script>
 
-<svelte:head><title>Avantage</title></svelte:head>
+<svelte:head><title>IKOP - Interaktivna karta okolišnih podataka</title></svelte:head>
 
 {#if downloads || drawing}<div class="loading"><div></div></div>{/if}
 
 <div class="layout" class:with-details={selectedFeature}>
 	<aside class="sidebar">
 		<header>
-			<h1>Avantage</h1>
+			<h1>IKOP - Interaktivna karta okolišnih podataka</h1>
 			<button onclick={() => (resets++, filterQuery = '')}>Resetiraj</button>
 		</header>
 		<nav aria-label="Slojevi">
