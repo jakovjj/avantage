@@ -134,7 +134,7 @@
 	// the full list (which leaves out services whose layers are all listed on top).
 	$effect(() => {
 		attempt;
-		if (((flat ? open : rootOpen) || filterQuery.trim() || restore.length || (part === 'rest' && !flat)) && !service && !error && !loading) {
+		if (((flat ? open : rootOpen) || filterQuery.trim() || restore.length) && !service && !error && !loading) {
 			loading = true;
 			inspect(url, type).then(
 				(s) => (service = s, loading = false),
