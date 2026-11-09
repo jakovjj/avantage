@@ -390,12 +390,13 @@
 <style>
 	:global(body) { margin: 0; height: 100dvh; font: 14px system-ui, sans-serif; color-scheme: light; background: #fff; color: #222; }
 	.layout { display: grid; grid-template-columns: 320px minmax(0, 1fr); height: 100%; }
-	.sidebar { display: flex; flex-direction: column; min-height: 0; padding: 0 16px; border-right: 1px solid #ddd; user-select: none; }
+	.sidebar { display: flex; flex-direction: column; min-height: 0; padding: 0 8px 0 16px; border-right: 1px solid #ddd; user-select: none; }
 	nav { display: flex; flex: none; border-bottom: 1px solid #ddd; }
 	nav button { flex: 1; padding: 8px 4px; border: 0; border-bottom: 2px solid transparent; background: #fff; color: #666; font: inherit; cursor: pointer; }
 	nav button[aria-pressed='true'] { border-bottom-color: #222; color: #222; }
 	nav button:hover { background: #f5f5f5; }
-	.catalogue, .active-layers { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 0 16px; }
+	/* The lists scroll: 8px of the sidebar's right padding sits inside them, between the row icons and the scrollbar. */
+	.catalogue, .active-layers { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 8px 16px 0; }
 	.catalogue { display: flex; flex-direction: column; }
 	[hidden] { display: none; }
 	.layer-stack { list-style: none; padding: 0; margin: 0; }
