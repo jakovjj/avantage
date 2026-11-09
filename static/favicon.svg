@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><title>Avantage</title><defs>
+  <mask id="zm1" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+    <rect width="64" height="64" fill="#fff"/>
+    <polygon points="12,29 32,19.7 52,29 32,38.3" fill="#000" stroke="#000" stroke-width="4.4" stroke-linejoin="round"/>
+  </mask>
+  <mask id="zm2" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+    <rect width="64" height="64" fill="#fff"/>
+    <polygon points="20,18.5 32,12.92 44,18.5 32,24.08" fill="#000" stroke="#000" stroke-width="4.4" stroke-linejoin="round"/>
+  </mask>
+</defs>
+<polygon points="4,40 32,26.979999999999997 60,40 32,53.02" fill="#2e7d32" stroke="#2e7d32" stroke-width="1.2" stroke-linejoin="round" mask="url(#zm1)"/>
+<polygon points="12,29 32,19.7 52,29 32,38.3" fill="#4caf50" stroke="#4caf50" stroke-width="1.2" stroke-linejoin="round" mask="url(#zm2)"/>
+<polygon points="20,18.5 32,12.92 44,18.5 32,24.08" fill="#ffb300" stroke="#ffb300" stroke-width="1.2" stroke-linejoin="round"/></svg>

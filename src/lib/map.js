@@ -38,11 +38,10 @@ let onSelect = () => {}; // createMap's onFeatureSelect
 // and points cover too little of it to deserve one everywhere).
 const clickableRasters = new Map();
 export const setClickable = (id, query) => (query ? clickableRasters.set(id, query) : clickableRasters.delete(id));
-// Overlays stack by service (`stack`: orthophotos at the bottom, then flood maps, habitats, waste statistics), within
-// one by geometry kind, points over lines over areas (and other rasters); map-drawn (GeoJSON) layers lie above every
-// raster. A click picks in that same order.
+// Geometry determines initial insertion while the logical stack is being assembled.
 const KIND_RANKS = { lines: 1, points: 2 };
 const overlayRanks = new Map(); // overlay id → rank of its kind
+const overlayOrders = new WeakMap(); // map → logical layer groups, highest priority first
 const rankOf = (source) => overlayRanks.get(source?.replace(/:overview$/, ''));
 const clickableAreas = () => [...clickableRasters.keys()].some((id) => !rankOf(id));
 let latestClick = 0;
@@ -138,19 +137,19 @@ export async function createMap (container, onFeatureSelect = () => {}, onLoadin
 	map.on('click', async (e) => {
 		const click = ++latestClick;
 		const rendered = overlayFeature(map, e.point);
-		// Server-drawn layers of a higher kind are asked all at once and win in rank order, then by what's drawn on top;
-		// at an equal rank the map's own feature wins, as it's drawn above every raster.
-		const order = map.getLayersOrder();
+		// Ask eligible WMS layers in parallel and use the first hit from the top of the current stack.
+		const positions = new Map(map.getStyle().layers.map((layer, index) => [layer.source, index]));
+		const renderedPosition = positions.get(rendered?.source) ?? -1;
 		const queries = [...clickableRasters]
-			.filter(([id]) => !rendered || rankOf(id) > rankOf(rendered.source))
-			.sort(([a], [b]) => rankOf(b) - rankOf(a) || order.indexOf(b) - order.indexOf(a))
+			.filter(([id]) => positions.get(id) > renderedPosition && map.getPaintProperty(id, 'raster-opacity') !== 0)
+			.sort(([a], [b]) => positions.get(b) - positions.get(a))
 			.map(([id, query]) => [id, query(e.point).catch(() => null)]);
 		for (const [id, answer] of queries) {
 			const hit = await answer;
 			if (click !== latestClick) return; // a newer click took over
-			if (hit) return selectRemote(map, id, hit);
+			if (hit && map.getLayer(id) && map.getPaintProperty(id, 'raster-opacity') !== 0) return selectRemote(map, id, hit);
 		}
-		if (!rendered) return;
+		if (!rendered || !map.getSource(rendered.source)) return;
 		const f = shownFeatures.get(rendered.source)?.get(rendered.id) ?? rendered;
 		removeHighlights(map);
 		showSelection(map, f, rendered);
@@ -257,7 +256,7 @@ export function viewBbox (map, scale = 1) {
 export const RASTER_OPACITY = 0.8;
 
 /** Adds a raster or GeoJSON source of geometry `kind` with optional per-layer display tweaks. */
-export function addOverlay (map, id, source, layer = {}, kind, stack = 0) {
+export function addOverlay (map, id, source, layer = {}, kind) {
 	// A saved image of the whole layer stands in for the server's tiles while zoomed out, where they are slow. The
 	// tiles' source then starts later rather than their layer, so it stays in use and keeps crediting the data
 	// provider (image sources can't carry an attribution). MapLibre picks raster tiles by the rounded map zoom, and
@@ -267,7 +266,7 @@ export function addOverlay (map, id, source, layer = {}, kind, stack = 0) {
 	const tilesFrom = overview && overview.maxZoom + 1 + Math.log2(512 / (source.tileSize ?? 512));
 	map.addSource(id, overview ? { ...source, minzoom: Math.max(source.minzoom ?? 0, tilesFrom) } : source);
 	overlayLayers.set(id, layer);
-	const rank = (source.type === 'raster' ? stack * 10 : 1000) + (KIND_RANKS[kind] ?? 0);
+	const rank = KIND_RANKS[kind] ?? 0;
 	overlayRanks.set(id, rank);
 	// Rasters cover the whole view, so they go under the basemap labels and stay a bit see-through; map-drawn features
 	// go above the labels. Either way, under the first overlay of a higher kind.
@@ -280,7 +279,9 @@ export function addOverlay (map, id, source, layer = {}, kind, stack = 0) {
 			map.addSource(`${id}:overview`, { type: 'image', url: overview.url, coordinates: [[w, n], [e, n], [e, s], [w, s]] });
 			map.addLayer({ id: `${id}:overview`, type: 'raster', source: `${id}:overview`, maxzoom: overview.maxZoom + 0.5, paint }, below);
 		}
-		return map.addLayer({ id, type: 'raster', source: id, paint }, below);
+		map.addLayer({ id, type: 'raster', source: id, paint }, below);
+		applyOverlayOrder(map);
+		return;
 	}
 	const { color, dash, markerSize } = overlayStyle(id);
 	const kinds = {
@@ -307,6 +308,40 @@ export function addOverlay (map, id, source, layer = {}, kind, stack = 0) {
 			...(Number.isFinite(layer.minZoom) && { minzoom: layer.minZoom }),
 			layout: layer.symbol.layout, paint: layer.symbol.paint ?? {}
 		}, below);
+	applyOverlayOrder(map);
+}
+
+/** Sets the logical stack without reloading data; members, overview images and survey halves move together. */
+export function setOverlayOrder(map, groups) {
+	overlayOrders.set(map, groups);
+	applyOverlayOrder(map);
+}
+
+function applyOverlayOrder(map) {
+	const groups = overlayOrders.get(map);
+	if (!groups?.length) return;
+	const layers = map.getStyle().layers;
+	const stacks = groups.map(() => []);
+	const sourceStacks = new Map();
+	for (const [index, sources] of groups.toReversed().entries()) {
+		for (const id of sources) {
+			sourceStacks.set(id, stacks[index]);
+			sourceStacks.set(`${id}:overview`, stacks[index]);
+		}
+	}
+	for (const layer of layers) sourceStacks.get(layer.source)?.push(layer);
+	const lastRaster = stacks.findLastIndex((stack) => stack.some((l) => l.type === 'raster'));
+	const labels = layers.find((l) => l.type === 'symbol' && !overlayLayers.has(l.source))?.id;
+	const outline = layers.find((l) => l.id === OUTLINE || l.id === `${SELECTION_SOURCE}:line`)?.id;
+	// Basemap labels sit above the highest raster. Vectors above that raster keep their labels and markers on top.
+	for (const [index, stack] of stacks.entries()) {
+		const before = index <= lastRaster ? labels : outline;
+		for (const layer of stack) map.moveLayer(layer.id, before);
+	}
+	const glow = `${SELECTION_SOURCE}:point`;
+	if (activeSelection && map.getLayer(glow)) {
+		map.moveLayer(glow, map.getStyle().layers.find((l) => l.source === activeSelection.sourceId)?.id);
+	}
 }
 
 /** Sets a raster overlay's opacity (0–1), its overview image's too. */

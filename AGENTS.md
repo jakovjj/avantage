@@ -99,10 +99,9 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
   `featureInfo` layer is asked at once (`setClickable` registers each layer's query) and the first hit in stacking order
   (service `stack`, then point over line over area, then drawing order) wins. While
   such a layer of areas is on, the cursor is a pointer over the whole map; lines and points alone don't get one.
-- Overlays stack by service first (service-level `stack`: Digitalni ortofoto -1, others 0, Hrvatske vode 1, Bioportal
-  2, Otpad (statistike) 3), then by the same kind (`addOverlay`'s `kind`): points over lines over areas and plain
-  rasters, whatever order they're turned on in; rasters stay under the basemap labels, map-drawn features above them
-  (and win clicks over every raster).
+- The stack is the user's (the active-layers panel, `setOverlayOrder`); a newly enabled layer starts by its `rank`
+  (`Source.svelte`): service-level `stack` (Digitalni ortofoto -1, others 0, Hrvatske vode 1, Bioportal 2, Otpad
+  (statistike) 3) × 10 for images, map-drawn layers above every image, then points over lines over areas.
 
 **Services behind a key** (service-level `authKey`: the URL that hands out the key)
 - DGU geoportal (`geoportal.dgu.hr/services/auth/…`, "za registrirane korisnike"; the open `services/inspire/…` ones
@@ -367,6 +366,8 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
 - Run the dev server (`npm run dev`, or the `dev` entry in `.claude/launch.json`) and check the change in a
   browser: layers toggle, no console errors, network requests look as intended.
 - Docker build (`docker compose up --build`) should keep working; it serves `build/` via `nginx.conf`.
+- Every push to `main` deploys `build/` to GitHub Pages (`.github/workflows/pages.yml`) under `/avantage/`, so
+  paths must stay relative: no root-relative URLs like `/favicon.svg`.
 
 ## Git
 
