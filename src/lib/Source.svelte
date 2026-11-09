@@ -4,6 +4,9 @@
 
 	// The open (i) box, one at a time across all services: { id: `${url}#${layer}`, left, top or bottom } in viewport px.
 	let shownInfo = $state(null);
+	export function closeLayerInfo() {
+		shownInfo = null;
+	}
 
 	// Services behind a short-lived key (`authKey`: the URL that hands it out): one key per URL, kept fresh, and MapLibre
 	// adds it to every request to that site.
@@ -19,14 +22,14 @@
 </script>
 
 <script>
-	import { onDestroy, untrack } from 'svelte';
+	import { getContext, onDestroy, untrack } from 'svelte';
 	import { inspect, legendUrl, rasterSource } from './ogc.js';
 	import { formatNumber } from './utils.js';
 	import { RASTER_OPACITY, addOverlay, removeOverlay, setOpacity } from './map.js';
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, layers = {}, authKey, format, together, exclusive, opacity: slider, part, flat = false, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	let { map, url, type, title, section, layers = {}, authKey, format, together, exclusive, opacity: slider, part, flat = false, open = false, onremove, reset = 0, filterQuery = '' } = $props();
 	// `flat`: the service's rows sit straight in a section of the page (`open` when it is), its one layer named `title`.
 	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
 	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
@@ -49,11 +52,30 @@
 	let groupOpen = $state({});
 	let searchSnapshot;
 	const active = $derived(Object.values(on).some(Boolean));
+	const activeLayers = getContext('avantage.activeLayers');
+	const owner = Symbol();
+	$effect(() => {
+		activeLayers.set(owner, listed.filter((l) => on[l.name]).map((l) => ({
+			id: `${url}#${l.name}`,
+			sources: [l.name, ...(layers[l.name]?.members ?? [])].map((name) => `${url}#${name}`)
+				.concat((together ?? []).map((_, i) => `${url}#${l.name}+${i + 1}`)),
+			rank: section ? -1 : (isRaster(l) ? 0 : 3) + ({ points: 2, lines: 1 }[l.kind] ?? 0),
+			layer: l,
+			title: flat && listed.length === 1 ? [section, title].filter(Boolean).join(' - ') : layers[l.name]?.label
+				? [layers[l.name].group, layers[l.name].label].filter(Boolean).join(' - ') : l.title,
+			render: row
+		})));
+	});
 	const hide = {}; // per layer name: removes it from the map
+	const requests = new Map(); // stale WMS setup must not add a layer after it was toggled again
 	// When the list goes away (the full list hidden, a service removed), its layers leave the map with it; they stay
 	// stored, so they come back on when it's shown again.
 	onDestroy(() => {
-		for (const name in on) if (on[name]) hide[name]?.();
+		activeLayers.delete(owner);
+		for (const name in on) if (on[name]) {
+			on[name] = false;
+			hide[name]?.();
+		}
 	});
 
 	// Grey icon of what a layer looks like on the map (12×12 SVG content).
@@ -72,6 +94,7 @@
 		return counts ? formatNumber(notes.reduce((a, b) => a + b)) : notes.find((n) => typeof n !== 'number');
 	}
 	const kindOf = (l) => (layers[l.name]?.heatmap ? 'heatmap' : l.kind);
+	const isRaster = (l) => service.type !== 'WFS' || Boolean(layers[l.name]?.wms);
 
 	// The page's reset button bumps `reset`: turn every layer off and clear the filter.
 	$effect(() => {
@@ -139,7 +162,7 @@
 		return counts;
 	});
 
-	const filtered = $derived(listed.filter((l) => (!showActiveOnly || on[l.name]) && l.title.toLowerCase().includes(filterQuery.trim().toLowerCase())));
+	const filtered = $derived(listed.filter((l) => l.title.toLowerCase().includes(filterQuery.trim().toLowerCase())));
 
 	const sections = $derived.by(() => {
 		const groups = new Map();
@@ -192,6 +215,8 @@
 
 	async function toggle(name) {
 		const id = `${url}#${name}`;
+		const request = Symbol();
+		requests.set(name, request);
 		store(id, on[name]);
 		note[name] = '';
 		// A row with `members` turns those (hidden) layers on and off with it.
@@ -213,15 +238,17 @@
 			// `together`: other WMS services whose first layer is drawn with this one, as one row (each covers another part).
 			const others = await Promise.all((together ?? []).map((u) => inspect(u, 'WMS')));
 			if (authKey) await useKey(authKey);
-			if (!on[name]) return; // turned off while the WMS capabilities or the key were loading
+			if (!on[name] || requests.get(name) !== request) return;
 			const kind = service.layers.find((l) => l.name === name)?.kind;
 			const ids = [id, ...others.map((_, i) => `${id}+${i + 1}`)];
 			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize, format), layers[name], kind);
 			others.forEach((o, i) => addOverlay(map, ids[i + 1], rasterSource(o, o.layers[0].name, layers[name]?.tileSize, format), layers[name], kind));
+			if (opacity[name] !== undefined) ids.forEach((o) => setOpacity(map, o, opacity[name]));
 			legend[name] = legendUrl(src, layer);
 			const stopQueries = layers[name]?.featureInfo && queryOnClick(map, id, src, layer, service, name, kind === 'points');
 			hide[name] = () => (stopQueries?.(), ids.forEach((o) => removeOverlay(map, o)));
 		} catch (e) {
+			if (!on[name] || requests.get(name) !== request) return;
 			note[name] = e.message;
 			on[name] = false;
 			store(id, false);
@@ -261,26 +288,13 @@
 	{/if}
 {/snippet}
 
-{#if infoLayer}
-	<!-- Official information only: the layer's own abstract, then its metadata record, else where the text came from. -->
-	<div class="info-box" style:left="{shownInfo.left}px" style:top={shownInfo.top && `${shownInfo.top}px`} style:bottom={shownInfo.bottom && `${shownInfo.bottom}px`} data-info>
-		<strong>{infoLayer.title}</strong>
-		<p>{infoLayer.about.text}</p>
-		{#if infoLayer.about.record}
-			<a href={infoLayer.about.record} target="_blank" rel="noreferrer">Više
-				<svg class="external" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><title>otvara se u novoj kartici</title><path d="M5 2H2v8h8V7M7 2h3v3M10 2L5.5 6.5" /></svg></a>
-		{:else}
-			<a href={service.capabilitiesUrl} target="_blank" rel="noreferrer">{service.type} endpoint</a>
-		{/if}
-	</div>
-{/if}
 <!-- A click outside the box or its (i), or Escape, closes it. -->
 <svelte:window
 	onclick={(e) => !e.target.closest('[data-info]') && (shownInfo = null)}
 	onkeydown={(e) => e.key === 'Escape' && (shownInfo = null)}
 />
 
-{#snippet row(l, text)}
+{#snippet row(l, text, managing = false)}
 	{@const [kind, icon] = KINDS[kindOf(l)] ?? []}
 	<label>
 		<input type="checkbox" bind:checked={on[l.name]} onchange={() => toggle(l.name)} />
@@ -296,13 +310,17 @@
 		{/if}
 	</label>
 	<!-- The layer's own `opacity` tweak or its service's; with `together`, the other services' halves follow. -->
-	{#if on[l.name] && (layers[l.name]?.opacity ?? slider)}
-		<input type="range" min="0" max="1" step="0.05" title="Neprozirnost" value={opacity[l.name] ?? RASTER_OPACITY}
-			oninput={(e) => {
-				const id = `${url}#${l.name}`;
-				opacity[l.name] = +e.currentTarget.value;
-				for (const o of [id, ...(together ?? []).map((_, i) => `${id}+${i + 1}`)]) setOpacity(map, o, opacity[l.name]);
-			}} />
+	{#if on[l.name] && ((layers[l.name]?.opacity ?? slider) || (managing && isRaster(l)))}
+		{@const transparency = Math.round(100 * (1 - (opacity[l.name] ?? RASTER_OPACITY)))}
+		<label class="opacity-control">
+			<span>Prozirnost <output>{transparency} %</output></span>
+			<input type="range" min="0" max="100" step="5" aria-label={`Prozirnost - ${text}`} aria-valuetext={`${transparency} % prozirno`} value={transparency}
+				oninput={(e) => {
+					const id = `${url}#${l.name}`;
+					opacity[l.name] = 1 - +e.currentTarget.value / 100;
+					for (const o of [id, ...(together ?? []).map((_, i) => `${id}+${i + 1}`)]) setOpacity(map, o, opacity[l.name]);
+				}} />
+		</label>
 	{/if}
 	{#if on[l.name] && layers[l.name]?.members}
 		<ul class="swatches">
@@ -310,7 +328,20 @@
 		</ul>
 	{/if}
 	<!-- A legend of one unlabelled swatch (DGU orthophotos: 20 × 20 px) says nothing. -->
-	{#if on[l.name] && legend[l.name]}<img src={legend[l.name]} alt="" onload={(e) => e.currentTarget.naturalWidth <= 20 && e.currentTarget.naturalHeight <= 20 && (legend[l.name] = null)} />{/if}
+	{#if on[l.name] && legend[l.name]}<img src={legend[l.name]} alt={`Legenda - ${text}`} onload={(e) => e.currentTarget.naturalWidth <= 20 && e.currentTarget.naturalHeight <= 20 && (legend[l.name] = null)} />{/if}
+	{#if infoLayer?.name === l.name}
+		<!-- Official information only: the layer's own abstract, then its metadata record, else where the text came from. -->
+		<div class="info-box" style:left="{shownInfo.left}px" style:top={shownInfo.top && `${shownInfo.top}px`} style:bottom={shownInfo.bottom && `${shownInfo.bottom}px`} data-info>
+			<strong>{infoLayer.title}</strong>
+			<p>{infoLayer.about.text}</p>
+			{#if infoLayer.about.record}
+				<a href={infoLayer.about.record} target="_blank" rel="noreferrer">Više
+					<svg class="external" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><title>otvara se u novoj kartici</title><path d="M5 2H2v8h8V7M7 2h3v3M10 2L5.5 6.5" /></svg></a>
+			{:else}
+				<a href={service.capabilitiesUrl} target="_blank" rel="noreferrer">{service.type} endpoint</a>
+			{/if}
+		</div>
+	{/if}
 {/snippet}
 
 <style>
@@ -325,9 +356,13 @@
 	a, img, small, pre + button { display: block; margin: 0 0 6px 12px; }
 	label small, summary small { display: inline; margin: 0; }
 	label > span { flex: 1; }
+	label > input { flex: none; }
+	img { max-width: calc(100% - 12px); height: auto; }
 	.swatches { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 0 0 6px 31px; padding: 0; list-style: none; font-size: 12px; color: #666; }
 	.swatches span { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; }
-	input[type='range'] { display: block; box-sizing: border-box; width: calc(100% - 31px); margin: 0 0 6px 31px; }
+	.opacity-control { display: block; margin: 2px 0 6px 31px; padding: 0; cursor: default; font-size: 12px; color: #666; }
+	.opacity-control > span { display: flex; justify-content: space-between; }
+	.opacity-control input { display: block; box-sizing: border-box; width: 100%; margin: 2px 0 0; }
 	svg { flex: none; align-self: center; width: 14px; height: 14px; color: #777; }
 	.info { display: flex; align-self: center; padding: 0; border: 0; background: none; cursor: pointer; }
 	.info.open svg { color: #222; }
