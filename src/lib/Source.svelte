@@ -29,7 +29,7 @@
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, section, layers = {}, authKey, format, together, exclusive, opacity: slider, wfs, stack, part, flat = false, open = false, onremove, reset = 0, filterQuery = '' } = $props();
+	let { map, url, type, title, section, layers = {}, authKey, format, together, clipToCroatia, exclusive, opacity: slider, wfs, stack, part, flat = false, open = false, onremove, reset = 0, filterQuery = '' } = $props();
 	// `flat`: the service's rows sit straight in a section of the page (`open` when it is), its one layer named `title`.
 	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
 	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
@@ -246,8 +246,9 @@
 			if (!on[name] || requests.get(name) !== request) return;
 			const kind = service.layers.find((l) => l.name === name)?.kind;
 			const ids = [id, ...others.map((_, i) => `${id}+${i + 1}`)];
-			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize, format), layers[name], kind);
-			others.forEach((o, i) => addOverlay(map, ids[i + 1], rasterSource(o, o.layers[0].name, layers[name]?.tileSize, format), layers[name], kind));
+			const display = clipToCroatia ? { ...layers[name], clipToCroatia } : layers[name];
+			addOverlay(map, id, rasterSource(src, layer, display?.tileSize, format), display, kind);
+			others.forEach((o, i) => addOverlay(map, ids[i + 1], rasterSource(o, o.layers[0].name, display?.tileSize, format), display, kind));
 			if (opacity[name] !== undefined) ids.forEach((o) => setOpacity(map, o, opacity[name]));
 			legend[name] = legendUrl(src, layer);
 			const [info, infoName, infoKind] = twin ? [twins, twin.name, twin.kind] : [service, name, kind];
