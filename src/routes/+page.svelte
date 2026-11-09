@@ -392,7 +392,7 @@
 	nav button[aria-pressed='true'] { border-bottom-color: #2e7d32; color: #2e7d32; }
 	nav button:hover { background: #f5f5f5; }
 	/* The lists scroll: 8px of the sidebar's right padding sits inside them, between the row icons and the scrollbar. */
-	.catalogue, .active-layers { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 8px 16px 0; }
+	.catalogue, .active-layers { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 8px 16px 0; scrollbar-color: #2e7d32 #f5f5f5; }
 	.catalogue { display: flex; flex-direction: column; }
 	[hidden] { display: none; }
 	.layer-stack { list-style: none; padding: 0; margin: 0; }
