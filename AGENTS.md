@@ -183,14 +183,14 @@ The sidebar lists only these on top, marked `ready`, under four categories named
 record of each of the 98: tonnes, kg per person, a facility's yearly tonnage, recovery / recycling / separation rates;
 counties and municipalities only, by the user's pick; clickable, plain properties table, one list, one at a time), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
 **Hrvatske vode** (all 4 flood maps, the user's choice). Every other layer shows in its service's section only when
-"Prikaži sve slojeve" is ticked (a developer option at the bottom, next to "Dodaj ručno slojeve"); a service whose
+"Prikaži sve slojeve" is ticked (a developer option at the bottom); a service whose
 layers are all on top is left out there. **Digitalni ortofoto (podloga)** (DGU, 10 rows: 2011, 2014–2016, the two-year composites 2017/2018 to 2023/2024,
 2022/2023 (the LIDAR survey, named like the rest), 2024 west + 2025/2026 east as one row "2024./2025.", and the 1:1000 Zagreb / 1:500 Sisak
 earthquake ones) is a `section` at the very top of the sidebar, always shown, one survey at a time (service-level
 `exclusive`); whole-country surveys use JPEG. Single years that a composite holds are
 left out (each covers half the country, not cut cleanly). Hiding the list takes its layers off the map (each `Source` removes its
 layers when it goes away) but keeps them stored, so they come back with it. A thin grey rule and the user's note "Niže navedeni slojevi prikazivat će se
-na karti bez obrade." separate them from the ready layers (the one sentence allowed in the sidebar).
+na karti u sirovom obliku." separate them from the ready layers (the one sentence allowed in the sidebar).
 
 - **Lokacije odbačenog otpada** (AZO) — WFS only (`otpad:odbaceni_otpad`; the WMS layer is hidden), `loadAll`
   (14,195 points, 1.35 MB gzipped). Dots coloured by
@@ -305,8 +305,8 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
 - **CSS stays small and plain**: native form controls (no custom checkboxes), no rounded corners, no shadows,
   gradients, animations or transitions, no colour themes/variables. A few lines per component is the target.
 - Sidebar: `Avantage` title, the layer filter, the Digitalni ortofoto section, the four categories of ready layers, then (with "Prikaži sve
-  slojeve") one `<details>` per service and the user's own services; at the bottom the two option checkboxes and the
-  URL form. No GetCapabilities ("`<TYPE> endpoint`") links and no service type (WFS/WMS) in the sidebar: they put
+  slojeve") one `<details>` per service; at the bottom the "Prikaži sve slojeve" checkbox. There are no user-added
+  services (the "Dodaj ručno slojeve" form was removed). No GetCapabilities ("`<TYPE> endpoint`") links and no service type (WFS/WMS) in the sidebar: they put
   off ordinary users.
 - A layer with the `opacity` tweak gets a native range slider under its row while it's on (0–1, default 0.8 like
   every raster), above its legend; it sets the tiles and the `overview` image.
@@ -323,8 +323,9 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
 - Numbers shown to users go through `formatNumber` (`utils.js`): thousands split by a thin space ("9 700 000"),
   **never a dot or comma** (they read as decimals); the decimal mark is a comma ("0,3").
 - Details panel (right): a ready layer's own `panel`, otherwise the properties table. A panel starts with a small
-  grey type label (`<h5>`, e.g. "Odlagalište otpada") above its heading, so it's clear what was clicked. The "Google Maps" link (points
-  only) is centred and stuck to the bottom of the panel, also while its content scrolls.
+  grey type label (`<h5>`, e.g. "Odlagalište otpada") above its heading, so it's clear what was clicked. For points, the bottom of the panel
+  holds "Otvori u Google Mapsu" (the Maps pin, `static/google-maps.png`, and a new-tab arrow) and "Podijeli" (shares or
+  copies that link), both plain links, centred and stuck to the bottom also while the content scrolls.
 - Selection highlight: a soft amber glow under a selected point's marker; selected lines and areas always get a black
   outline (it shows on every fill colour; amber or blue didn't).
 - Each layer row has a small grey icon after its name showing its map type (markers / lines / areas / heatmap / image), derived from
@@ -338,7 +339,7 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
 - Debug readout: `lat, lon, z zoom` (two decimals each) in the **top-right** corner of the map. Map controls must
   not cover it.
 - Code, identifiers and comments are **English**. Comments explain *why*, briefly.
-- `localStorage` is only for per-user conveniences (custom services, enabled layers) and every access is wrapped in
+- `localStorage` is only for per-user conveniences (enabled layers, their order) and every access is wrapped in
   `try/catch`.
 
 ## Known pitfalls
