@@ -9,6 +9,7 @@
 
 	let container, map = $state();
 	let selectedFeature = $state(null);
+	let shareCopied = $state(false);
 	let custom = $state(loadCustom());
 	let url = $state('');
 	let showAddForm = $state(false);
@@ -90,6 +91,32 @@
 		if (!coordinates || !Number.isFinite(coordinates[0]) || !Number.isFinite(coordinates[1])) return null;
 		const query = `${coordinates[1]},${coordinates[0]}`;
 		return `https://www.google.com/maps/search/?api=1&${new URLSearchParams({ query })}`;
+	}
+
+	async function shareGoogleMapsUrl(url) {
+		if (navigator.share && window.isSecureContext) {
+			try {
+				await navigator.share({ url });
+				return;
+			} catch (error) {
+				if (error.name === 'AbortError') return;
+			}
+		}
+		try {
+			await navigator.clipboard.writeText(url);
+		} catch {
+			const input = document.createElement('textarea');
+			input.value = url;
+			input.style.position = 'fixed';
+			input.style.opacity = '0';
+			document.body.append(input);
+			input.select();
+			const copied = document.execCommand('copy');
+			input.remove();
+			if (!copied) return;
+		}
+		shareCopied = true;
+		setTimeout(() => (shareCopied = false), 2000);
 	}
 
 	// Custom services are a per-user convenience; storage may be unavailable.
@@ -208,7 +235,12 @@
 				{#if layer.panel}<layer.panel properties={feature.properties} {layer} />{:else}{@html propsTable(feature.properties, layer.details)}{/if}
 			</div>
 			{#if googleMapsUrl(feature)}
-				<a class="maps" href={googleMapsUrl(feature)} target="_blank" rel="noopener noreferrer">Google Maps</a>
+				<div class="maps">
+					<a href={googleMapsUrl(feature)} target="_blank" rel="noopener noreferrer" aria-label="Otvori u Google Maps">
+						<img src="/google-maps.svg" alt="Google Maps" />
+					</a>
+					<button class:copied={shareCopied} type="button" onclick={() => shareGoogleMapsUrl(googleMapsUrl(feature))}>{shareCopied ? 'Kopirano' : 'Podijeli'}</button>
+				</div>
 			{/if}
 		</aside>
 	{/if}
@@ -226,7 +258,11 @@
 	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; box-sizing: border-box; z-index: 10; display: flex; flex-direction: column; overflow-y: auto; padding: 12px 12px 0; border-left: 1px solid #ddd; background: #fff; }
 	/* The content fills the panel, so the link sits at its bottom; when the panel scrolls, the link sticks there. */
 	.details > div { flex: 1 0 auto; padding-bottom: 12px; }
-	.maps { position: sticky; bottom: 0; padding: 10px 0; text-align: center; background: #fff; }
+	.maps { position: sticky; bottom: 0; display: flex; justify-content: center; align-items: center; gap: 12px; padding: 10px 0; background: #fff; }
+	.maps img { display: block; width: 44px; height: 44px; }
+	.maps button { padding: 8px 16px; border: 1px solid #222; border-radius: 8px; background: #fff; color: #222; font: inherit; cursor: pointer; transition: background-color 180ms ease, box-shadow 180ms ease; }
+	.maps button:hover { box-shadow: 0 2px 7px #0003; }
+	.maps button.copied { background: #eaf4ff; }
 	header { display: flex; justify-content: space-between; align-items: center; }
 	h1 { font-size: 20px; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
