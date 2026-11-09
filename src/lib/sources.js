@@ -21,6 +21,8 @@ import Odlagaliste, { MARKERS as LANDFILL_MARKERS } from './panels/Odlagaliste.s
 import Staniste2016 from './panels/Staniste2016.svelte';
 import Staniste2004 from './panels/Staniste2004.svelte';
 import MorskaStanista2023 from './panels/MorskaStanista2023.svelte';
+import Periska from './panels/Periska.svelte';
+import SaproksilniKornjas from './panels/SaproksilniKornjas.svelte';
 import odlagalistaSnapshot from './snapshots/v_odlagalista_geom.json?url';
 import natureSolar from './snapshots/ocjena_priroda_solar.png?url';
 import natureWind from './snapshots/ocjena_priroda_vjetar.png?url';
@@ -99,43 +101,6 @@ const HEATMAP = { ready: true, opacity: true, wms: BIOPORTAL_WMS, heatmap: true,
 const OVERVIEW_BOUNDS = [13.4, 42.3, 19.55, 46.6];
 const WITH_OVERVIEW = (url) => ({ ...HEATMAP, overview: { url, bounds: OVERVIEW_BOUNDS, maxZoom: 8 } });
 
-const PERISKE_DETAILS = {
-	fields: [
-		{ keys: ['dat_opaza', 'dat_op'], label: 'Datum opažanja' },
-		{ keys: ['god_op'], label: 'Godina opažanja' },
-		{ keys: ['opazac', 'promat', 'prom'], label: 'Opažač' },
-		{ keys: ['lokalitet', 'lokal', 'lok', 'naziv_lok'], label: 'Lokalitet' },
-		{ keys: ['dubina_m', 'dubina'], label: 'Dubina (m)' },
-		{ keys: ['br_jedinki', 'br_jedi', 'br_jed'], label: 'Broj jedinki' },
-		{ keys: ['br_uginul', 'br_ugin', 'br_ugi'], label: 'Broj uginulih' },
-		{ keys: ['dojav_stan', 'stanje'], label: 'Stanje' },
-		{ keys: ['prov_stanj', 'provjera', 'provjer'], label: 'Provjera stanja' },
-		{ keys: ['nesig_koor', 'nesigurno', 'nesigu', 'nes'], label: 'Nesigurno' },
-		{ keys: ['napomena'], label: 'Napomena' },
-		{ keys: ['referenca'], label: 'Izvor' }
-	]
-};
-
-const BEETLE_DETAILS = {
-	fields: [
-		{ keys: ['validno_im', 'val_im', 'val_ime'], label: 'Vrsta' },
-		{ keys: ['ime_op', 'im_op'], label: 'Ime' },
-		{ keys: ['prez_op'], label: 'Prezime' },
-		{ keys: ['im_pre_op'], label: 'Ime i prezime' },
-		{ keys: ['dat_doj', 'dat_obj'], label: 'Datum dojave' },
-		{ keys: ['god_doj'], label: 'Godina dojave' },
-		{ keys: ['dat_op'], label: 'Datum opažanja' },
-		{ keys: ['dat_nal'], label: 'Datum nalaza' },
-		{ keys: ['vrije_pron', 'vrij_pr', 'vri_pro', 'vri_pron'], label: 'Vrijeme nalaza' },
-		{ keys: ['lok', 'lokal'], label: 'Lokalitet' },
-		{ keys: ['opis_lok'], label: 'Opis lokacije' },
-		{ keys: ['spol'], label: 'Spol' },
-		{ keys: ['br_jed', 'br_jedi'], label: 'Broj jedinki' },
-		{ keys: ['nesig', 'nesigur', 'nesigurnos', 'nesigu'], label: 'Nesigurno' },
-		{ keys: ['foto'], label: 'Fotografija' }
-	]
-};
-
 const PROTECTED_AREA_DETAILS = {
 	fields: [
 		{ keys: ['naziv_akt', 'naziv'], label: 'Naziv' },
@@ -150,6 +115,36 @@ const PROTECTED_AREA_DETAILS = {
 // Karta staništa 2004: 9 layers, one panel. The big ones (land polygons 60,555 ≈ 60 MB, watercourses 22,859 lines,
 // rocks and screes 22,420, sea coast 5,305, sea bottom 3,485 polygons) are drawn by the WMS (512 px tiles: ≤1.9 s for
 // Croatia, ≤0.5 s zoomed in) and clicked via GetFeatureInfo; points, underground and inland waters stay WFS (≤1,121).
+// Periske and saproksilni kornjaši: reports in one WFS layer per year (≤999 points, ≤462 KB, ~0.1 s each), each shown
+// as one row whose layer turns on the others (`members`), every one loaded whole and coloured by its year: cold greens
+// to blues for Periske, warm yellows to reds for kornjaši. The oldest layer hosts the row, so the newest years are
+// drawn on top.
+const PERISKE = {
+	'dzzpnpis:periska_arhivski_podaci': ['arhiv', '#a1d99b'],
+	'dzzpnpis:periske_dojave_strucnjaka': ['stručnjaci', '#41ab5d'],
+	'dzzpnpis:periska_dojave_gradana_2019': ['2019', '#7fcdbb'],
+	'dzzpnpis:periska_dojave_gradana_2020': ['2020', '#41b6c4'],
+	'dzzpnpis:periske_dojave_gradana_2021': ['2021', '#1d91c0'],
+	'dzzpnpis:periske_dojave_gradana_2022': ['2022', '#225ea8'],
+	'dzzpnpis:periske_dojave_gradana_2023': ['2023', '#253494'],
+	'dzzpnpis:periske_dojave_gradana_2024': ['2024', '#081d58']
+};
+const BEETLES = {
+	'dzzpnpis:saproksilni_kornjasi_dojave_2015': ['2015', '#fed976'],
+	'dzzpnpis:saproksilni_kornjasi_dojave_2016': ['2016', '#feb24c'],
+	'dzzpnpis:saproksilni_kornjasi_dojave_2017': ['2017', '#fd8d3c'],
+	'dzzpnpis:saproksilni_kornjasi_dojave_2018': ['2018', '#f03b20'],
+	'dzzpnpis:saproksilni_kornjasi_dojave_2019': ['2019', '#bd0026']
+};
+const asOneRow = (series, panel, label) => {
+	const [host, ...members] = Object.keys(series);
+	const circle = (color) => ({ 'circle-color': color, 'circle-radius': 5, 'circle-stroke-width': 1 });
+	return Object.fromEntries(Object.entries(series).map(([name, [legend, color]]) => [name, {
+		panel, legend, loadAll: true, paint: { circle: circle(color) },
+		...(name === host ? { ready: true, label, members } : { hide: true })
+	}]));
+};
+
 // Both habitat maps share one sidebar section ("2004 - …", "2016 - …"), and only one of their land polygon layers can be
 // on: they cover the same ground.
 const HABITATS = 'Karta staništa';
@@ -184,19 +179,8 @@ export default [
 		type: 'WFS',
 		url: 'https://services.bioportal.hr/wfs',
 		layers: {
-			'dzzpnpis:periska_dojave_gradana_2019': { details: PERISKE_DETAILS },
-			'dzzpnpis:periska_dojave_gradana_2020': { details: PERISKE_DETAILS },
-			'dzzpnpis:periske_dojave_gradana_2021': { details: PERISKE_DETAILS },
-			'dzzpnpis:periske_dojave_gradana_2022': { details: PERISKE_DETAILS },
-			'dzzpnpis:periske_dojave_gradana_2023': { details: PERISKE_DETAILS },
-			'dzzpnpis:periske_dojave_gradana_2024': { details: PERISKE_DETAILS },
-			'dzzpnpis:periske_dojave_strucnjaka': { details: PERISKE_DETAILS },
-			'dzzpnpis:periska_arhivski_podaci': { details: PERISKE_DETAILS },
-			'dzzpnpis:saproksilni_kornjasi_dojave_2015': { details: BEETLE_DETAILS },
-			'dzzpnpis:saproksilni_kornjasi_dojave_2016': { details: BEETLE_DETAILS },
-			'dzzpnpis:saproksilni_kornjasi_dojave_2017': { details: BEETLE_DETAILS },
-			'dzzpnpis:saproksilni_kornjasi_dojave_2018': { details: BEETLE_DETAILS },
-			'dzzpnpis:saproksilni_kornjasi_dojave_2019': { details: BEETLE_DETAILS },
+			...asOneRow(PERISKE, Periska, 'Periske'),
+			...asOneRow(BEETLES, SaproksilniKornjas, 'Saproksilni kornjaši'),
 			'dzzpnpis:zasticeno_podrucje_poligoni': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:zasticeno_podrucje_tocke': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:kopnena_stanista': { ...HABITAT_2004_WMS, exclusive: 'kopnena staništa', opacity: true },

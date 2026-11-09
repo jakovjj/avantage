@@ -109,6 +109,10 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `label` — the layer's row text in its group when it can't come from the title (rows are sorted by it).
 - `opacity` — WMS: an opacity slider under the row while the layer is on, for rasters covering the whole map
   (the Osjetljivost maps and the habitat polygon layers).
+- `members` — names of hidden layers this row turns on and off with itself, so several layers show as one row (its
+  `label`); with each member's `legend` (short text) and `paint.circle['circle-color']`, the row shows a colour legend
+  while on, and its count is their total.
+- `legend` — a member's text in that legend, also passed to the panel (`layer` prop).
 - `ready` — a designed layer: listed on top under its service's `category` (see Ready layers).
 - `minZoom` — map zoom below which the layer is neither drawn nor requested.
 - `details` — labelled fields shown first in the right-hand details panel: `{ fields: [{ keys, label }] }`; all other
@@ -119,7 +123,8 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `heatmap` — `true`: the sidebar shows the layer with the heatmap icon.
 - `featureInfo` — with `wms`: a click on the map asks the WMS for the feature there (see WMS above).
 - `hide` — leave the layer out of the sidebar (e.g. its data is shown from another service instead).
-- `panel` — Svelte component (`src/lib/panels/`) replacing the properties table in the details panel.
+- `panel` — Svelte component (`src/lib/panels/`) replacing the properties table in the details panel; it gets the
+  feature's `properties` and the layer's tweaks (`layer`).
 - `loadAll` — WFS only: download the whole layer once, without the 100 KB cap, and never switch to viewport mode.
   Only after measuring that the full download is acceptable (compressed size, time).
 - `images` — `{ name: SVG markup }` icons for `symbol`, drawn at half the SVG's pixel size so their edges stay sharp.
@@ -182,6 +187,23 @@ na karti bez obrade." separate them from the ready layers (the one sentence allo
   repeats them, `tip` names the layer, `id_rel`/`fid` are internal. Panel `Staniste2004.svelte` for all 9: layer,
   then each type (name, code), names and codes paired only when they match up. The WMS style colours 109 codes
   separately, so no class swatches. Clicks on lines hit within a few px (GeoServer's default buffer).
+- **Periske** and **Saproksilni kornjaši** (Bioportal) — one row each (`members`), every layer `loadAll` (≤999 points,
+  ≤462 KB, ~0.1 s each): Periske 2,446 points in 8 layers (archive 2006–2018, experts, citizen reports 2019–2024),
+  kornjaši 2,380 in 5 (citizen reports 2015–2019). Coloured by layer (year): cold greens to blues for Periske, warm
+  yellows to reds for kornjaši, so the two never mix; the oldest hosting the row so the newest are drawn on top. Every year names its fields differently, so the panels take the
+  first field present and skip placeholders ("Nepoznato", "nije navedeno", "ne"). `nesig*` is the location's
+  uncertainty in metres (mostly 25–30 m for kornjaši; shown only from 1 m). Coordinates (`x_*`, `y_*`, stated
+  `nav*_k*`) and the report number `br_nal` aren't shown; `foto` is only "da"/"ne" (no photo links are published). Bioportal
+  has no kornjaši reports after 2019, although ZZOP still runs the yearly call (its 2024 call names the species
+  jelenak, alpinska strizibuba, velika četveropjega strizibuba).
+  Both panels have one structure, as plain lines (no label/value tables): a type label ("Periska - dojava građana" /
+  "dojava stručnjaka" / "arhivski podatak", "Saproksilni kornjaš - dojava građana"; no year, the date has it), the
+  species as the heading, Croatian with the Latin name small and grey beside it ("Plemenita periska *Pinna
+  nobilis*"; the beetles' names from ZZOP's call, `NAMES` in the panel), the place (and its description), the
+  date and observer in grey, the finding in bold (Periska's state; the beetle's sex, with the count when above one),
+  one sentence of details ("1 jedinka na 2 m dubine, od toga…"; "Dojavljeno …, s fotografijom"), and "Točnost
+  lokacije ±… m" small at the bottom. Nouns after numbers use `plural` (`utils.js`).
+  Dates go through `formatDate` (`utils.js`): "22.7.2019.".
 - **Karta morskih staništa 2023** (Bioportal `morska_stanista_p_1_1` 31,993 polygons, `_l_1_1` 15,455 lines,
   `_pt_1_1` 62,144 points; 200 polygons ≈ 3 MB as WFS) — all 3 drawn by the WMS with `featureInfo` (~0.05 s), rows
   labelled "2023 - more - poligoni / linije / točke". Polygons and points take ~4 s per 512 px view of Croatia, so
@@ -259,6 +281,7 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   time; a click outside or Escape closes it): the layer's title, that text and "Više" with a new-tab icon linking to
   the metadata record (NIPP geoportal page), otherwise a "`<TYPE>` endpoint" link. Never write our own texts there. The NIPP records can't be read from the browser (the
   geoportal sends `Access-Control-Allow-Origin: *, *`, which browsers reject), so they are only linked.
+- No middle dot (·) anywhere in the UI; join parts with " - " or a comma.
 - Numbers shown to users go through `formatNumber` (`utils.js`): thousands split by a thin space ("9 700 000"),
   **never a dot or comma** (they read as decimals); the decimal mark is a comma ("0,3").
 - Details panel (right): a ready layer's own `panel`, otherwise the properties table. A panel starts with a small
@@ -274,7 +297,7 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
 - Loading bar: a thin green (`#4caf50`) block sweeping along the top edge of the page while any download runs
   (`track` in `utils.js`: WFS, GetCapabilities, the basemap style) or WMS/WMTS tiles load (`onLoading` from `createMap`).
   Basemap tiles and re-tiling already loaded GeoJSON don't count.
-- Debug readout: `lat, lon · z zoom` (two decimals each) in the **top-right** corner of the map. Map controls must
+- Debug readout: `lat, lon, z zoom` (two decimals each) in the **top-right** corner of the map. Map controls must
   not cover it.
 - Code, identifiers and comments are **English**. Comments explain *why*, briefly.
 - `localStorage` is only for per-user conveniences (custom services, enabled layers) and every access is wrapped in

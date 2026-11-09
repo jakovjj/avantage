@@ -80,7 +80,9 @@
 	}
 
 	function googleMapsUrl(feature) {
-		const coordinates = feature.geometry?.type === 'Point' ? feature.geometry.coordinates : null;
+		const { type, coordinates: c } = feature.geometry ?? {};
+		// A MultiPoint of one point (Periske 2023) is a point too.
+		const coordinates = type === 'Point' ? c : type === 'MultiPoint' && c.length === 1 ? c[0] : null;
 		if (!coordinates || !Number.isFinite(coordinates[0]) || !Number.isFinite(coordinates[1])) return null;
 		const query = `${coordinates[1]},${coordinates[0]}`;
 		return `https://www.google.com/maps/search/?api=1&${new URLSearchParams({ query })}`;
@@ -193,7 +195,7 @@
 		<aside class="details">
 			<div>
 				<button class="close" aria-label="Zatvori" onclick={() => clearSelection(map)}>✕</button>
-				{#if layer.panel}<layer.panel properties={feature.properties} />{:else}{@html propsTable(feature.properties, layer.details)}{/if}
+				{#if layer.panel}<layer.panel properties={feature.properties} {layer} />{:else}{@html propsTable(feature.properties, layer.details)}{/if}
 			</div>
 			{#if googleMapsUrl(feature)}
 				<a class="maps" href={googleMapsUrl(feature)} target="_blank" rel="noopener noreferrer">Google Maps</a>
@@ -202,7 +204,7 @@
 	{/if}
 </div>
 {#if map}
-	<code class:details-open={selectedFeature}>{cursor ? `${cursor.lat.toFixed(2)}, ${cursor.lng.toFixed(2)} · ` : ''}z {zoom.toFixed(2)}</code>
+	<code class:details-open={selectedFeature}>{cursor ? `${cursor.lat.toFixed(2)}, ${cursor.lng.toFixed(2)}, ` : ''}z {zoom.toFixed(2)}</code>
 {/if}
 
 <style>

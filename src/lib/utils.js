@@ -8,6 +8,20 @@ export const titleCase = (s) =>
 export const formatNumber = (value, maximumFractionDigits = 2) =>
 	Number(value).toLocaleString('hr', { maximumFractionDigits }).replaceAll('.', '\u202f');
 
+/** Croatian noun form after a number: 1, 21 → `one`; 2–4, 22–24 → `few`; 0, 5–20, 25… → `many`. */
+export function plural(n, one, few, many) {
+	const [ten, hundred] = [n % 10, n % 100];
+	return ten === 1 && hundred !== 11 ? one : ten >= 2 && ten <= 4 && (hundred < 12 || hundred > 14) ? few : many;
+}
+
+/** "2020-07-28Z", "2016/07/17" or "18. 6. 2023." as "28.7.2020."; other texts ("listopad 2019.") as they are. */
+export function formatDate(value) {
+	const text = String(value ?? '').trim();
+	const iso = text.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+	const [d, m, y] = iso ? [iso[3], iso[2], iso[1]] : text.match(/^(\d{1,2})\.\s*(\d{1,2})\.\s*(\d{4})\.?$/)?.slice(1) ?? [];
+	return y ? `${+d}.${+m}.${y}.` : text;
+}
+
 export const escapeHtml = (v) =>
 	String(v ?? '').replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 
