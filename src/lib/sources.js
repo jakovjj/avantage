@@ -23,6 +23,7 @@ import Staniste2004 from './panels/Staniste2004.svelte';
 import MorskaStanista2023 from './panels/MorskaStanista2023.svelte';
 import Periska from './panels/Periska.svelte';
 import SaproksilniKornjas from './panels/SaproksilniKornjas.svelte';
+import SpeleoDeponij from './panels/SpeleoDeponij.svelte';
 import odlagalistaSnapshot from './snapshots/v_odlagalista_geom.json?url';
 import natureSolar from './snapshots/ocjena_priroda_solar.png?url';
 import natureWind from './snapshots/ocjena_priroda_vjetar.png?url';
@@ -145,6 +146,15 @@ const asOneRow = (series, panel, label) => {
 	}]));
 };
 
+// Divlji deponiji otpada u speleološkim objektima: the register as of 2021 (763 caves) and 2024 (825), merged into one
+// layer (89 KB gzipped together). Each cave has one page on cistopodzemlje.info, the only reliable key (the cadastre
+// number is often "-"): 727 caves are in both (the 2024 record wins), 98 only in 2024, 36 only in 2021.
+const CAVE_DUMPS = {
+	ready: true, label: 'Divlji deponiji otpada u speleološkim objektima', panel: SpeleoDeponij, loadAll: true,
+	merge: ['dzzpnpis:divlji_deponiji_2021'], id: (f) => String(f.properties.link ?? f.properties.povez).replace(/^https?:\/\//, ''),
+	paint: { circle: { 'circle-color': '#8c510a', 'circle-radius': 5, 'circle-stroke-width': 1 } }
+};
+
 // Both habitat maps share one sidebar section ("2004 - …", "2016 - …"), and only one of their land polygon layers can be
 // on: they cover the same ground.
 const HABITATS = 'Karta staništa';
@@ -181,6 +191,8 @@ export default [
 		layers: {
 			...asOneRow(PERISKE, Periska, 'Periske'),
 			...asOneRow(BEETLES, SaproksilniKornjas, 'Saproksilni kornjaši'),
+			'dzzpnpis:depo_speleo_2024': CAVE_DUMPS,
+			'dzzpnpis:divlji_deponiji_2021': { hide: true },
 			'dzzpnpis:zasticeno_podrucje_poligoni': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:zasticeno_podrucje_tocke': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:kopnena_stanista': { ...HABITAT_2004_WMS, exclusive: 'kopnena staništa', opacity: true },
