@@ -1,4 +1,31 @@
 <script module>
+	const COUNTIES = {
+		'Bjelovarsko-bilogorska županija': 'Bjelovarsko-bilogorskoj županiji',
+		'Brodsko-posavska županija': 'Brodsko-posavskoj županiji',
+		'Dubrovačko-neretvanska županija': 'Dubrovačko-neretvanskoj županiji',
+		'Grad Zagreb': 'Gradu Zagrebu',
+		'Istarska županija': 'Istarskoj županiji',
+		'Karlovačka županija': 'Karlovačkoj županiji',
+		'Koprivničko-križevačka županija': 'Koprivničko-križevačkoj županiji',
+		'Krapinsko-zagorska županija': 'Krapinsko-zagorskoj županiji',
+		'Ličko-senjska županija': 'Ličko-senjskoj županiji',
+		'Međimurska županija': 'Međimurskoj županiji',
+		'Osječko-baranjska županija': 'Osječko-baranjskoj županiji',
+		'Požeško-slavonska županija': 'Požeško-slavonskoj županiji',
+		'Primorsko-goranska županija': 'Primorsko-goranskoj županiji',
+		'Sisačko-moslavačka županija': 'Sisačko-moslavačkoj županiji',
+		'Splitsko-dalmatinska županija': 'Splitsko-dalmatinskoj županiji',
+		'Varaždinska županija': 'Varaždinskoj županiji',
+		'Virovitičko-podravska županija': 'Virovitičko-podravskoj županiji',
+		'Vukovarsko-srijemska županija': 'Vukovarsko-srijemskoj županiji',
+		'Zadarska županija': 'Zadarskoj županiji',
+		'Zagrebačka županija': 'Zagrebačkoj županiji',
+		'Šibensko-kninska županija': 'Šibensko-kninskoj županiji'
+	};
+
+	export const landfillShareText = (p) =>
+		`Pogledaj ovo odlagalište otpada ${p.naziv_odlagalista} u ${COUNTIES[p.zupanija_odlagalista] ?? 'Hrvatskoj'}!`;
+
 	// Markers of the AZO WMS style, by status_operativnosti: a red triangle for active landfills, circles for closed ones.
 	// Drawn at 2× (the map shows them at half size) so their edges stay sharp.
 	export const MARKERS = {
