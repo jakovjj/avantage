@@ -249,7 +249,9 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   off ordinary users.
 - A layer with the `opacity` tweak gets a native range slider under its row while it's on (0–1, default 0.8 like
   every raster), above its legend; it sets the tiles and the `overview` image.
-- The data provider (from GetCapabilities) is credited in the MapLibre attribution, not in the sidebar.
+- The data provider (from GetCapabilities) is credited in the MapLibre attribution, not in the sidebar. Credits are
+  Croatian: a provider named in English goes through `PROVIDER_NAMES` in `sources.js` (Bioportal's "Croatian Agency
+  for the Environment and Nature"), and the basemap's TileJSON credit is replaced by `BASEMAP_CREDIT` in `map.js`.
 - A layer row has an (i) after its type icon only when GetCapabilities gives an **official** description (`about` in
   `ogc.js`): an abstract that says more than the title (not the title again, "null", or the service's abstract); a
   metadata link alone isn't enough. It opens a box over the map, beside the sidebar and level with the row (one at a
