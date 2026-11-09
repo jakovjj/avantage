@@ -192,11 +192,7 @@ export async function createMap (container, onFeatureSelect = () => {}, onLoadin
 			if (hit && map.getLayer(id) && map.getPaintProperty(id, 'raster-opacity') !== 0) return selectRemote(map, id, hit);
 		}
 		if (!rendered || !map.getSource(rendered.source)) return;
-		const f = shownFeatures.get(rendered.source)?.get(rendered.id) ?? rendered;
-		removeHighlights(map);
-		showSelection(map, f, rendered);
-		activeSelection = { sourceId: rendered.source };
-		onSelect(f, rendered.source, overlayLayers.get(rendered.source));
+		selectRendered(map, rendered);
 	});
 	map.on('mousemove', (e) => (map.getCanvas().style.cursor = clickableAreas() || overlayFeature(map, e.point) ? 'pointer' : ''));
 	map.on('dataloading', (e) => e.sourceId && map.getSource(e.sourceId)?.type === 'raster' && onLoading(true));
@@ -257,6 +253,38 @@ function removeHighlights(map) {
 	for (const id of [`${SELECTION_SOURCE}:line`, `${SELECTION_SOURCE}:point`, OUTLINE]) if (map.getLayer(id)) map.removeLayer(id);
 	for (const id of [SELECTION_SOURCE, OUTLINE]) if (map.getSource(id)) map.removeSource(id);
 	nonInteractive.delete(SELECTION_SOURCE);
+}
+
+/** Selects a map-drawn feature as found under a click: its glow or outline, and the details panel. */
+function selectRendered(map, rendered) {
+	const f = shownFeatures.get(rendered.source)?.get(rendered.id) ?? rendered;
+	removeHighlights(map);
+	showSelection(map, f, rendered);
+	activeSelection = { sourceId: rendered.source };
+	onSelect(f, rendered.source, overlayLayers.get(rendered.source));
+}
+
+/**
+ * Opens a map-drawn feature by its id (a shared link) once overlay `sourceId` has loaded it: centres the map on it and
+ * selects it as a click would.
+ */
+export function selectShared(map, sourceId, featureId) {
+	const open = () => {
+		const feature = [...(shownFeatures.get(sourceId)?.values() ?? [])].find((f) => String(f.id) === featureId);
+		if (!feature) return;
+		map.off('idle', open);
+		let at = feature.geometry.coordinates;
+		while (Array.isArray(at[0])) at = at[0];
+		map.jumpTo({ center: at, zoom: Math.max(map.getZoom(), 14) });
+		map.once('idle', () => {
+			// The drawn marker gives the glow its size; when it can't be found under the point, a default size will do.
+			const id = numericId(feature.id);
+			const rendered = map.queryRenderedFeatures(map.project(at)).find((r) => r.source === sourceId && r.id === id);
+			selectRendered(map, rendered ?? { source: sourceId, id, layer: { type: 'symbol', layout: {} } });
+		});
+	};
+	map.on('idle', open);
+	open();
 }
 
 /** Selects a feature a WMS layer (overlay `sourceId`) returned: details panel, and `outline` tiles that draw it. */

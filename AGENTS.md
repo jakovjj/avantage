@@ -100,8 +100,11 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
   (service `stack`, then point over line over area, then drawing order) wins. While
   such a layer of areas is on, the cursor is a pointer over the whole map; lines and points alone don't get one.
 - The stack is the user's (the active-layers panel, `setOverlayOrder`); a newly enabled layer starts by its `rank`
-  (`Source.svelte`): service-level `stack` (Digitalni ortofoto -1, others 0, Hrvatske vode 1, Bioportal 2, Otpad
-  (statistike) 3) × 10 for images, map-drawn layers above every image, then points over lines over areas.
+  (`Source.svelte`): its own or its service's `stack` (Digitalni ortofoto -1, others 0, Bioportal habitats 1, the
+  Osjetljivost maps 2, Otpad (statistike) 3, Hrvatske vode 4) × 10 for images, markers (map-drawn layers) above every
+  image, then points over lines over areas: markers > vode > otpad (statistike) > osjetljivost > staništa > ortofoto.
+  A layer the user hasn't dragged is placed by that rank, just above the first active layer it outranks; a dragged one
+  keeps its place.
 
 **Services behind a key** (service-level `authKey`: the URL that hands out the key)
 - DGU geoportal (`geoportal.dgu.hr/services/auth/…`, "za registrirane korisnike"; the open `services/inspire/…` ones
@@ -142,6 +145,11 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `featureInfo` — with `wms`, or on a WMS service with `wfs`: a click on the map asks the WMS for the feature there (see
   WMS above); the attribute list comes from the WFS layer of the same name.
 - `hide` — leave the layer out of the sidebar (e.g. its data is shown from another service instead).
+- `share` — text of the "Podijeli" message ("Pogledaj ovaj otpad!" for Lokacije odbačenog otpada): it shares
+  "<text> <link>", the link being this app with `/?<shareCode><feature number>` (`shareCode`, e.g. "oo": a
+  short code per layer, then the number of its GeoServer id: `/?oo13880` is `odbaceni_otpad.13880`); opened, it turns the layer
+  on (`turnOn`), waits until it holds the feature, centres on it and opens it (`selectShared` in `map.js`). Without it,
+  "Podijeli" shares the Google Maps link.
 - `panel` — Svelte component (`src/lib/panels/`) replacing the properties table in the details panel; it gets the
   feature's `properties` and the layer's tweaks (`layer`).
 - `loadAll` — WFS only: download the whole layer once, without the 100 KB cap, and never switch to viewport mode.
@@ -164,7 +172,7 @@ Keep these to what cannot be inferred automatically. Supported keys:
   zoom; the network panel doesn't show MapLibre's worker requests. See Snapshots.
 
 Service-level keys besides `title`, `url`, `type` and `layers`: `category` (ready layers' section on top), `section`
-(services listed together in one section of the full list, one row each, named by `title`: `flat` in `Source.svelte`),
+(services listed together in one section, one row each, named by `title`: `flat` in `Source.svelte`),
 `authKey`, `format` (see WMS above), `wfs` (a WMS service's layers as WFS, for `featureInfo`'s attribute list and point
 kind) and `together` (other WMS services whose first layer is drawn with this one, as one
 row: halves of the country from different services).
@@ -182,15 +190,13 @@ The sidebar lists only these on top, marked `ready`, under four categories named
 **Otpad (lokacije)** (AZO WFS), **Otpad (statistike)** (AZO WMS: the 18 layers whose records count amounts of waste, 2014–2023, picked by reading a
 record of each of the 98: tonnes, kg per person, a facility's yearly tonnage, recovery / recycling / separation rates;
 counties and municipalities only, by the user's pick; clickable, plain properties table, one list, one at a time), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
-**Hrvatske vode** (all 4 flood maps, the user's choice). Every other layer shows in its service's section only when
-"Prikaži sve slojeve" is ticked (a developer option at the bottom); a service whose
-layers are all on top is left out there. **Digitalni ortofoto (podloga)** (DGU, 10 rows: 2011, 2014–2016, the two-year composites 2017/2018 to 2023/2024,
+**Hrvatske vode** (all 4 flood maps, the user's choice). No other layer is listed: the
+"Prikaži sve slojeve" developer option (every other layer, raw) was removed; to show one, design it and mark it `ready`. **Digitalni ortofoto (podloga)** (DGU, 10 rows: 2011, 2014–2016, the two-year composites 2017/2018 to 2023/2024,
 2022/2023 (the LIDAR survey, named like the rest), 2024 west + 2025/2026 east as one row "2024./2025.", and the 1:1000 Zagreb / 1:500 Sisak
 earthquake ones) is a `section` at the very top of the sidebar, always shown, one survey at a time (service-level
 `exclusive`); whole-country surveys use JPEG. Single years that a composite holds are
-left out (each covers half the country, not cut cleanly). Hiding the list takes its layers off the map (each `Source` removes its
-layers when it goes away) but keeps them stored, so they come back with it. A thin grey rule and the user's note "Niže navedeni slojevi prikazivat će se
-na karti u sirovom obliku." separate them from the ready layers (the one sentence allowed in the sidebar).
+left out (each covers half the country, not cut cleanly). A `Source` that goes away takes its layers off the map
+but keeps them stored, so they come back with it.
 
 - **Lokacije odbačenog otpada** (AZO) — WFS only (`otpad:odbaceni_otpad`; the WMS layer is hidden), `loadAll`
   (14,195 points, 1.35 MB gzipped). Dots coloured by
@@ -304,9 +310,8 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   logos, counters/badges, spinners, empty-state prose. The one loading indicator is the green bar below.
 - **CSS stays small and plain**: native form controls (no custom checkboxes), no rounded corners, no shadows,
   gradients, animations or transitions, no colour themes/variables. A few lines per component is the target.
-- Sidebar: `Avantage` title, the layer filter, the Digitalni ortofoto section, the four categories of ready layers, then (with "Prikaži sve
-  slojeve") one `<details>` per service; at the bottom the "Prikaži sve slojeve" checkbox. There are no user-added
-  services (the "Dodaj ručno slojeve" form was removed). No GetCapabilities ("`<TYPE> endpoint`") links and no service type (WFS/WMS) in the sidebar: they put
+- Sidebar: `Avantage` title, the layer filter, the Digitalni ortofoto section, the four categories of ready layers; nothing
+  else. There are no user-added services (the "Dodaj ručno slojeve" form was removed). No GetCapabilities ("`<TYPE> endpoint`") links and no service type (WFS/WMS) in the sidebar: they put
   off ordinary users.
 - A layer with the `opacity` tweak gets a native range slider under its row while it's on (0–1, default 0.8 like
   every raster), above its legend; it sets the tiles and the `overview` image.
@@ -324,8 +329,8 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   **never a dot or comma** (they read as decimals); the decimal mark is a comma ("0,3").
 - Details panel (right): a ready layer's own `panel`, otherwise the properties table. A panel starts with a small
   grey type label (`<h5>`, e.g. "Odlagalište otpada") above its heading, so it's clear what was clicked. For points, the bottom of the panel
-  holds "Otvori u Google Mapsu" (the Maps pin, `static/google-maps.png`, and a new-tab arrow) and "Podijeli" (shares or
-  copies that link), both plain links, centred and stuck to the bottom also while the content scrolls.
+  holds "Otvori u Google Mapsu" (the Maps pin, `static/google-maps.png`, and a new-tab arrow) and below it "Podijeli" (shares
+  or copies that link, or the layer's `share` message), both plain links, centred and stuck to the bottom also while the content scrolls.
 - Selection highlight: a soft amber glow under a selected point's marker; selected lines and areas always get a black
   outline (it shows on every fill colour; amber or blue didn't).
 - Each layer row has a small grey icon after its name showing its map type (markers / lines / areas / heatmap / image), derived from
