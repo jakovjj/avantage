@@ -183,26 +183,26 @@ export const PROVIDER_NAMES = { 'Croatian Agency for the Environment and Nature'
 
 // Digitalni ortofoto (DGU): one WMS per survey, in the "Digitalni ortofoto" section at the top, one at a time. Images
 // need a short-lived key (`authKey`; the open services carry a watermark); capabilities don't. The services don't list
-// EPSG:3857 but draw it (~1 s per 512 px tile). JPEG tiles are 6× smaller than PNG (~110 KB vs ~700 KB) but white where
-// a survey has no image, so only surveys of all of Croatia use JPEG; the yearly ones cover the east or the west.
+// EPSG:3857 but draw it. PNG preserves the server's transparency, and the map clips the tiles to Croatia.
 const DGU_KEY = 'https://geoportal.dgu.hr/api/authkey/userAuthKey';
 // A single year covers only the east or the west half and isn't cut cleanly, so those a two-year composite holds are
 // left out; the newest pair (2024 west, 2025/2026 east, both transparent PNG) is drawn together as one row (`together`).
 const DGU_WMS = (name) => `https://geoportal.dgu.hr/services/auth/inspire/${name}/wms`;
 const ORTHOPHOTOS = [
-	['orthophoto_2011', '2011.', true],
-	['orthophoto_2014-2016', '2014.-2016.', true],
-	['orthophoto_2017_2018', '2017./2018.', true],
-	['orthophoto_2019_2020', '2019./2020.', true],
-	['orthophoto_2021_2022', '2021./2022.', true],
-	['orthophoto_lidar_2022_2023', '2022./2023.', true], // the LIDAR survey's orthophoto
-	['orthophoto_2023_2024', '2023./2024.', true],
-	['orthophoto_2024', '2024./2025.', false, ['orthophoto_2025_2026']],
+	['orthophoto_2011', '2011.'],
+	['orthophoto_2014-2016', '2014.-2016.'],
+	['orthophoto_2017_2018', '2017./2018.'],
+	['orthophoto_2019_2020', '2019./2020.'],
+	['orthophoto_2021_2022', '2021./2022.'],
+	['orthophoto_lidar_2022_2023', '2022./2023.'], // the LIDAR survey's orthophoto
+	['orthophoto_2023_2024', '2023./2024.'],
+	['orthophoto_2024', '2024./2025.', ['orthophoto_2025_2026']],
 	['orthophoto_1000', '1:1000 potres Zagreb'],
 	['orthophoto_500', '1:500 potres Sisačko-moslavačka županija']
-].map(([name, title, whole, together]) => ({
+].map(([name, title, together]) => ({
 	title, section: 'Digitalni ortofoto (podloga)', stack: -1, type: 'WMS', url: DGU_WMS(name), authKey: DGU_KEY, exclusive: 'ortofoto', opacity: true,
-	...(whole && { format: 'image/jpeg' }), ...(together && { together: together.map(DGU_WMS) })
+	clipToCroatia: true,
+	...(together && { together: together.map(DGU_WMS) })
 }));
 
 // "Otpad (statistike)": every AZO layer whose records count amounts of waste (tonnes, kg per person, yearly tonnage of a facility,
