@@ -29,7 +29,8 @@
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, section, layers = {}, authKey, format, together, clipToCroatia, exclusive, opacity: slider, wfs, stack, part, flat = false, open = false, reset = 0, filterQuery = '' } = $props();
+	let { map, url, type, title, section, layers = {}, authKey, format, together, clipToCroatia, exclusive, opacity: slider, wfs, stack, part, flat = false, open = false, turnOn = [], reset = 0, filterQuery = '' } = $props();
+	// `turnOn`: layer names to turn on at load besides the stored ones (a shared link's layer).
 	// `flat`: the service's rows sit straight in a section of the page (`open` when it is), its one layer named `title`.
 	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
 	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
@@ -59,9 +60,10 @@
 			id: `${url}#${l.name}`,
 			sources: [l.name, ...(layers[l.name]?.members ?? [])].map((name) => `${url}#${name}`)
 				.concat((together ?? []).map((_, i) => `${url}#${l.name}+${i + 1}`)),
-			// Where a newly enabled layer starts in the stack: by its service's `stack` (orthophotos -1 at the bottom, then
-			// flood maps, habitats, waste statistics), map-drawn layers above every image; then points over lines over areas.
-			rank: (isRaster(l) ? (stack ?? 0) * 10 : 1000) + ({ points: 2, lines: 1 }[l.kind] ?? 0),
+			// Where a newly enabled layer goes in the stack: by its own or its service's `stack` (orthophotos -1, habitats 1,
+			// sensitivity maps 2, waste statistics 3, flood maps 4), markers above every image; then points over lines over
+			// areas.
+			rank: (isRaster(l) ? (layers[l.name]?.stack ?? stack ?? 0) * 10 : 1000) + ({ points: 2, lines: 1 }[l.kind] ?? 0),
 			layer: l,
 			title: flat && listed.length === 1 ? [section, title].filter(Boolean).join(' - ') : layers[l.name]?.label
 				? [layers[l.name].group, layers[l.name].label].filter(Boolean).join(' - ') : l.title,
@@ -120,7 +122,7 @@
 			localStorage.setItem(STORED, JSON.stringify([...storedIds().filter((s) => s !== id), ...(enabled ? [id] : [])]));
 		} catch {}
 	}
-	const restore = untrack(() => storedIds().filter((id) => id.startsWith(`${url}#`)).map((id) => id.slice(url.length + 1)).filter(inPart));
+	const restore = untrack(() => [...storedIds().filter((id) => id.startsWith(`${url}#`)).map((id) => id.slice(url.length + 1)), ...turnOn].filter(inPart));
 
 	$effect(() => {
 		if (service) untrack(() => {

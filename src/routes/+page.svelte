@@ -1,7 +1,7 @@
 <script>
 	import { onMount, setContext, tick } from 'svelte';
 	import { SvelteMap } from 'svelte/reactivity';
-	import { clearSelection, createMap, flyToCoordinates, setOverlayOrder } from '#lib/map.js';
+	import { clearSelection, createMap, flyToCoordinates, selectShared, setOverlayOrder } from '#lib/map.js';
 	import { propsTable, watchDownloads } from '#lib/utils.js';
 	import Source, { closeLayerInfo } from '#lib/Source.svelte';
 	import SOURCES from '#lib/sources.js';
@@ -11,6 +11,12 @@
 	let container, map = $state();
 	let selectedFeature = $state(null);
 	let shareCopied = $state(false);
+	// A shared link, "/?oo13880" (a layer's `shareCode`, then its GeoServer feature number), turns that layer on and opens
+	// the feature ("odbaceni_otpad.13880").
+	const [, code, number] = location.search.match(/^\?([a-z]+)(\d+)$/i) ?? [];
+	const sharedSource = code && SOURCES.find((s) => Object.values(s.layers ?? {}).some((l) => l.shareCode === code));
+	const shared = sharedSource && Object.entries(sharedSource.layers).find(([, l]) => l.shareCode === code)[0];
+	const turnOn = (source) => (source === sharedSource ? [shared] : []);
 	let showAll = $state(false); // every layer of every service, not only the designed ones
 	// Services sharing a `section` (one survey each, e.g. Digitalni ortofoto) are listed together, one row per service, at
 	// the top of the sidebar.
@@ -21,9 +27,15 @@
 	let layerOrder = $state(loadLayerOrder());
 	let draggedLayer = $state(null), dropTarget = $state(null);
 	const activeRows = $derived.by(() => {
+		const rows = [...activeLayers.values()].flat();
 		const positions = new Map(layerOrder.map((id, index) => [id, index]));
-		return [...activeLayers.values()].flat().sort((a, b) =>
-			(positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity) || b.rank - a.rank);
+		const placed = rows.filter((r) => positions.has(r.id)).sort((a, b) => positions.get(a.id) - positions.get(b.id));
+		// A layer the user hasn't moved goes where its rank puts it: just above the first layer it outranks.
+		for (const row of rows.filter((r) => !positions.has(r.id)).sort((a, b) => b.rank - a.rank)) {
+			const at = placed.findIndex((p) => p.rank < row.rank);
+			placed.splice(at < 0 ? placed.length : at, 0, row);
+		}
+		return placed;
 	});
 	$effect(() => {
 		if (map) setOverlayOrder(map, activeRows.map((entry) => entry.sources));
@@ -190,20 +202,29 @@
 		return `https://www.google.com/maps/search/?api=1&${new URLSearchParams({ query })}`;
 	}
 
-	async function shareGoogleMapsUrl(url) {
+	// A layer with a `share` text shares a link back to this app that reopens the feature; the others share Google Maps.
+	function shareData(feature, sourceId, layer) {
+		if (!layer.share) return { url: googleMapsUrl(feature) };
+		const link = new URL(location.pathname, location.origin);
+		link.search = `${layer.shareCode}${String(feature.id).split('.').pop()}`;
+		return { text: `${layer.share} ${link}` };
+	}
+
+	async function share(data) {
+		const text = data.text ?? data.url;
 		if (navigator.share && window.isSecureContext) {
 			try {
-				await navigator.share({ url });
+				await navigator.share(data);
 				return;
 			} catch (error) {
 				if (error.name === 'AbortError') return;
 			}
 		}
 		try {
-			await navigator.clipboard.writeText(url);
+			await navigator.clipboard.writeText(text);
 		} catch {
 			const input = document.createElement('textarea');
-			input.value = url;
+			input.value = text;
 			input.style.position = 'fixed';
 			input.style.opacity = '0';
 			document.body.append(input);
@@ -221,6 +242,7 @@
 			zoom = m.getZoom();
 			m.on('zoom', () => (zoom = m.getZoom()));
 			m.on('mousemove', (e) => (cursor = e.lngLat));
+			if (sharedSource) selectShared(m, `${sharedSource.url}#${shared}`, `${shared.split(':').pop()}.${number}`);
 			return (map = m);
 		});
 		return () => {
@@ -254,11 +276,11 @@
 						{#each services as source}<Source {map} {...source} flat open={sectionOpen[name]} reset={resets} {filterQuery} />{/each}
 					</details>
 				{/each}
-				{#each SOURCES.filter((s) => s.category) as source}<Source {map} {...source} title={source.category} part="ready" reset={resets} {filterQuery} />{/each}
+				{#each SOURCES.filter((s) => s.category) as source}<Source {map} {...source} title={source.category} part="ready" turnOn={turnOn(source)} reset={resets} {filterQuery} />{/each}
 				{#if showAll}
 					<hr />
 					<p class="raw-note">Niže navedeni slojevi prikazivat će se na karti u sirovom obliku.</p>
-					{#each SOURCES.filter((s) => !s.section) as source}<Source {map} {...source} part="rest" reset={resets} {filterQuery} />{/each}
+					{#each SOURCES.filter((s) => !s.section) as source}<Source {map} {...source} part="rest" turnOn={turnOn(source)} reset={resets} {filterQuery} />{/each}
 				{/if}
 			{/if}
 			<div class="manual-options">
@@ -336,7 +358,7 @@
 						<img src="google-maps.png" alt="" />Otvori u Google Mapsu
 						<svg class="external" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><title>otvara se u novoj kartici</title><path d="M5 2H2v8h8V7M7 2h3v3M10 2L5.5 6.5" /></svg>
 					</a>
-					<button type="button" onclick={() => shareGoogleMapsUrl(googleMapsUrl(feature))}>{shareCopied ? 'Kopirano' : 'Podijeli'}</button>
+					<button type="button" onclick={() => share(shareData(feature, selectedFeature.sourceId, layer))}>{shareCopied ? 'Kopirano' : 'Podijeli'}</button>
 				</div>
 			{/if}
 		</aside>
@@ -375,7 +397,7 @@
 	.details { position: fixed; top: 0; right: 0; bottom: 0; width: 320px; box-sizing: border-box; z-index: 10; display: flex; flex-direction: column; overflow-y: auto; padding: 12px 12px 0; border-left: 1px solid #ddd; background: #fff; }
 	/* The content fills the panel, so the link sits at its bottom; when the panel scrolls, the link sticks there. */
 	.details > div { flex: 1 0 auto; padding-bottom: 12px; }
-	.maps { position: sticky; bottom: 0; display: flex; justify-content: center; align-items: center; gap: 12px; padding: 10px 0; background: #fff; }
+	.maps { position: sticky; bottom: 0; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0; background: #fff; }
 	/* Both look like links: Google Maps with its pin, "Podijeli" as plain text. */
 	.maps a, .maps button { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: LinkText; font: inherit; text-decoration: underline; cursor: pointer; }
 	.maps img { width: 20px; height: 20px; }

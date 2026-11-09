@@ -100,8 +100,11 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
   (service `stack`, then point over line over area, then drawing order) wins. While
   such a layer of areas is on, the cursor is a pointer over the whole map; lines and points alone don't get one.
 - The stack is the user's (the active-layers panel, `setOverlayOrder`); a newly enabled layer starts by its `rank`
-  (`Source.svelte`): service-level `stack` (Digitalni ortofoto -1, others 0, Hrvatske vode 1, Bioportal 2, Otpad
-  (statistike) 3) × 10 for images, map-drawn layers above every image, then points over lines over areas.
+  (`Source.svelte`): its own or its service's `stack` (Digitalni ortofoto -1, others 0, Bioportal habitats 1, the
+  Osjetljivost maps 2, Otpad (statistike) 3, Hrvatske vode 4) × 10 for images, markers (map-drawn layers) above every
+  image, then points over lines over areas: markers > vode > otpad (statistike) > osjetljivost > staništa > ortofoto.
+  A layer the user hasn't dragged is placed by that rank, just above the first active layer it outranks; a dragged one
+  keeps its place.
 
 **Services behind a key** (service-level `authKey`: the URL that hands out the key)
 - DGU geoportal (`geoportal.dgu.hr/services/auth/…`, "za registrirane korisnike"; the open `services/inspire/…` ones
@@ -142,6 +145,11 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `featureInfo` — with `wms`, or on a WMS service with `wfs`: a click on the map asks the WMS for the feature there (see
   WMS above); the attribute list comes from the WFS layer of the same name.
 - `hide` — leave the layer out of the sidebar (e.g. its data is shown from another service instead).
+- `share` — text of the "Podijeli" message ("Pogledaj ovaj otpad!" for Lokacije odbačenog otpada): it shares
+  "<text> <link>", the link being this app with `/?<shareCode><feature number>` (`shareCode`, e.g. "oo": a
+  short code per layer, then the number of its GeoServer id: `/?oo13880` is `odbaceni_otpad.13880`); opened, it turns the layer
+  on (`turnOn`), waits until it holds the feature, centres on it and opens it (`selectShared` in `map.js`). Without it,
+  "Podijeli" shares the Google Maps link.
 - `panel` — Svelte component (`src/lib/panels/`) replacing the properties table in the details panel; it gets the
   feature's `properties` and the layer's tweaks (`layer`).
 - `loadAll` — WFS only: download the whole layer once, without the 100 KB cap, and never switch to viewport mode.
@@ -324,8 +332,8 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   **never a dot or comma** (they read as decimals); the decimal mark is a comma ("0,3").
 - Details panel (right): a ready layer's own `panel`, otherwise the properties table. A panel starts with a small
   grey type label (`<h5>`, e.g. "Odlagalište otpada") above its heading, so it's clear what was clicked. For points, the bottom of the panel
-  holds "Otvori u Google Mapsu" (the Maps pin, `static/google-maps.png`, and a new-tab arrow) and "Podijeli" (shares or
-  copies that link), both plain links, centred and stuck to the bottom also while the content scrolls.
+  holds "Otvori u Google Mapsu" (the Maps pin, `static/google-maps.png`, and a new-tab arrow) and below it "Podijeli" (shares
+  or copies that link, or the layer's `share` message), both plain links, centred and stuck to the bottom also while the content scrolls.
 - Selection highlight: a soft amber glow under a selected point's marker; selected lines and areas always get a black
   outline (it shows on every fill colour; amber or blue didn't).
 - Each layer row has a small grey icon after its name showing its map type (markers / lines / areas / heatmap / image), derived from
