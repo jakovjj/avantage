@@ -126,7 +126,7 @@ Keep these to what cannot be inferred automatically. Supported keys:
   any group ("Otpad (statistike)" lists its years in one list).
 - `label` — the layer's row text in its group when it can't come from the title (rows are sorted by it).
 - `opacity` — WMS: an opacity slider under the row while the layer is on, for rasters covering the whole map
-  (the Osjetljivost maps, the habitat polygon layers; service-level for the Digitalni ortofoto surveys, where it also
+  (the Osjetljivost maps, the habitat polygon layers, Otpad (statistike); service-level for the Digitalni ortofoto surveys, where it also
   moves a `together` service's half).
 - `members` — names of hidden layers this row turns on and off with itself, so several layers show as one row (its
   `label`); with each member's `legend` (short text) and `paint.circle['circle-color']`, the row shows a colour legend

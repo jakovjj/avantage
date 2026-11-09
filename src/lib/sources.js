@@ -221,7 +221,7 @@ const AMOUNTS = Object.fromEntries([
 	'stopa_rec_zup_2022',
 	// municipalities (JLS)
 	'mj_ko_proiz_t_2015', 'mj_ko_proiz_t_2016', 'jls_stopa_odvajanja_poticajna_2019', 'jls_stopa_odv_otp_2022'
-].map((name) => [name, { ready: true, featureInfo: true, group: false, exclusive: 'otpad-dev' }])); // one list, one at a time
+].map((name) => [name, { ready: true, featureInfo: true, group: false, exclusive: 'otpad-dev', opacity: true }])); // one list, one at a time
 
 export default [
 	{
