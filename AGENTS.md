@@ -120,7 +120,8 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 Keep these to what cannot be inferred automatically. Supported keys:
 - `id(feature)` — stable feature key when the server's ids change between requests.
 - `paint` — MapLibre paint overrides per kind: `{ fill, line, circle }` (e.g. habitat map coloured by NKS class).
-- `group` — sidebar group title when it can't come from the `Group - layer` title prefix.
+- `group` — sidebar group title when it can't come from the `Group - layer` title prefix; `false` keeps the row out of
+  any group ("Otpad (dev)" lists its years in one list).
 - `label` — the layer's row text in its group when it can't come from the title (rows are sorted by it).
 - `opacity` — WMS: an opacity slider under the row while the layer is on, for rasters covering the whole map
   (the Osjetljivost maps, the habitat polygon layers; service-level for the Digitalni ortofoto surveys, where it also
@@ -137,14 +138,13 @@ Keep these to what cannot be inferred automatically. Supported keys:
   too big as vectors (Bioportal sensitivity maps: a few dissolved polygons of several MB each; Karta staništa 2016:
   322,906 polygons).
 - `heatmap` — `true`: the sidebar shows the layer with the heatmap icon.
-- `featureInfo` — with `wms`: a click on the map asks the WMS for the feature there (see WMS above).
+- `featureInfo` — with `wms`, or on a WMS service with `wfs`: a click on the map asks the WMS for the feature there (see
+  WMS above); the attribute list comes from the WFS layer of the same name.
 - `hide` — leave the layer out of the sidebar (e.g. its data is shown from another service instead).
 - `panel` — Svelte component (`src/lib/panels/`) replacing the properties table in the details panel; it gets the
   feature's `properties` and the layer's tweaks (`layer`).
 - `loadAll` — WFS only: download the whole layer once, without the 100 KB cap, and never switch to viewport mode.
   Only after measuring that the full download is acceptable (compressed size, time).
-- `merge` — WFS with `loadAll`: names of other layers of the same service loaded whole into this one; a feature in
-  several counts once, by the `id` hook, and the layer's own copy wins (hide the merged layers).
 - `images` — `{ name: SVG markup }` icons for `symbol`, drawn at half the SVG's pixel size so their edges stay sharp.
 - `symbol` — `{ layout, paint }` of one extra MapLibre symbol layer on top of the layer's own: icons (markers circles
   can't draw, e.g. triangles) and labels (`text-font` must be a basemap font: `Noto Sans Regular/Bold/Italic`).
@@ -164,7 +164,8 @@ Keep these to what cannot be inferred automatically. Supported keys:
 
 Service-level keys besides `title`, `url`, `type` and `layers`: `category` (ready layers' section on top), `section`
 (services listed together in one section of the full list, one row each, named by `title`: `flat` in `Source.svelte`),
-`authKey`, `format` (see WMS above) and `together` (other WMS services whose first layer is drawn with this one, as one
+`authKey`, `format` (see WMS above), `wfs` (a WMS service's layers as WFS, for `featureInfo`'s attribute list and point
+kind) and `together` (other WMS services whose first layer is drawn with this one, as one
 row: halves of the country from different services).
 
 New tweak types must be generic (applied by `map.js`/`wfs.js`/`Source.svelte`/the page), not special-cased per
@@ -176,8 +177,10 @@ Layers the user has designed by hand, one by one: own colours, own details panel
 only. Their config sits in the "Ready layers" block at the top of `sources.js`. **Don't change them** unless the user
 asks; every other layer keeps the automatic defaults. Add a layer here when the user says its design is done.
 
-The sidebar lists only these on top, marked `ready`, under three categories named by their service's `category`:
-**Otpad** (AZO WFS), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
+The sidebar lists only these on top, marked `ready`, under four categories named by their service's `category`:
+**Otpad** (AZO WFS), **Otpad (dev)** (AZO WMS: the 39 layers whose records count amounts of waste, 2014–2023, picked by reading a
+record of each of the 98: tonnes, kg per person, a facility's yearly tonnage, recovery / recycling / separation rates;
+counties, municipalities and facilities; clickable, plain properties table, one list, one at a time), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
 **Hrvatske vode** (all 4 flood maps, the user's choice). Every other layer shows in its service's section only when
 "Prikaži sve slojeve" is ticked (a developer option at the bottom, next to "Dodaj ručno slojeve"); a service whose
 layers are all on top is left out there. **Digitalni ortofoto (podloga)** (DGU, 10 rows: 2011, 2014–2016, the two-year composites 2017/2018 to 2023/2024,
@@ -232,15 +235,12 @@ na karti bez obrade." separate them from the ready layers (the one sentence allo
   one sentence of details ("1 jedinka na 2 m dubine, od toga…"; "Dojavljeno …, s fotografijom"), and "Točnost
   lokacije ±… m" small at the bottom. Nouns after numbers use `plural` (`utils.js`).
   Dates go through `formatDate` (`utils.js`): "22.7.2019.".
-- **Divlji deponiji otpada u speleološkim objektima** (Bioportal) — the register as of 2024 (`depo_speleo_2024`, 825
-  caves) with 2021 (`divlji_deponiji_2021`, 763) `merge`d in: 89 KB gzipped together, 861 caves. Each cave has one
-  page on cistopodzemlje.info, the `id` (the cadastre number is often "-"): 727 caves are in both (the 2024 record
-  wins), 98 only in 2024, 36 only in 2021 (maybe cleaned up since). The AZO otpad WFS has the same register yearly
-  (`depo_speleo_2017…2025`, growing to 842), not used. Brown dots; from zoom 12 each cave's name beside it
-  (`symbol`, like Odlagališta; a `step` on zoom, without "(sinonimi: …)"; colliding names are dropped). Panel `SpeleoDeponij.svelte`: the cave's name
-  ("(sinonimi: …)" moved to "Također: …"), length and depth as "18 m kanala, 14 m u dubinu" (number
-  first; "duljina" and "dubina" read alike), cadastre number, the club that reported it, "Samo u popisu
-  iz 2021." for a cave missing from 2024 (only 2021 has `povez`), and "Više na cistopodzemlje.info" (https).
+- **Divlji deponiji otpada u speleološkim objektima** (AZO WFS `otpad:depo_speleo_2025`, in Otpad) — the newest yearly
+  register only (842 caves, 365 KB, `loadAll`; each yearly layer, AZO 2017–2025 and Bioportal 2021/2024, is the whole
+  register as of then). Brown dots; from zoom 12 each cave's name beside it (`symbol`, a `step` on zoom, without
+  "(sinonimi: …)"; colliding names are dropped). Panel `SpeleoDeponij.svelte`: the cave's name ("(sinonimi: …)" moved
+  to "Također: …"), length and depth as "18 m kanala, 14 m u dubinu" (number first; "duljina" and "dubina" read alike),
+  cadastre number, the club that reported it, and "Više na cistopodzemlje.info" (https).
 - **Karta morskih staništa 2023** (Bioportal `morska_stanista_p_1_1` 31,993 polygons, `_l_1_1` 15,455 lines,
   `_pt_1_1` 62,144 points; 200 polygons ≈ 3 MB as WFS) — all 3 drawn by the WMS with `featureInfo` (~0.05 s), rows
   labelled "2023 - more - poligoni / linije / točke". Polygons and points take ~4 s per 512 px view of Croatia, so
@@ -303,7 +303,7 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   logos, counters/badges, spinners, empty-state prose. The one loading indicator is the green bar below.
 - **CSS stays small and plain**: native form controls (no custom checkboxes), no rounded corners, no shadows,
   gradients, animations or transitions, no colour themes/variables. A few lines per component is the target.
-- Sidebar: `Avantage` title, the layer filter, the Digitalni ortofoto section, the three categories of ready layers, then (with "Prikaži sve
+- Sidebar: `Avantage` title, the layer filter, the Digitalni ortofoto section, the four categories of ready layers, then (with "Prikaži sve
   slojeve") one `<details>` per service and the user's own services; at the bottom the two option checkboxes and the
   URL form. No GetCapabilities ("`<TYPE> endpoint`") links and no service type (WFS/WMS) in the sidebar: they put
   off ordinary users.
