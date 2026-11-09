@@ -21,6 +21,9 @@ import Odlagaliste, { MARKERS as LANDFILL_MARKERS } from './panels/Odlagaliste.s
 import Staniste2016 from './panels/Staniste2016.svelte';
 import Staniste2004 from './panels/Staniste2004.svelte';
 import MorskaStanista2023 from './panels/MorskaStanista2023.svelte';
+import Periska from './panels/Periska.svelte';
+import SaproksilniKornjas from './panels/SaproksilniKornjas.svelte';
+import SpeleoDeponij from './panels/SpeleoDeponij.svelte';
 import odlagalistaSnapshot from './snapshots/v_odlagalista_geom.json?url';
 import natureSolar from './snapshots/ocjena_priroda_solar.png?url';
 import natureWind from './snapshots/ocjena_priroda_vjetar.png?url';
@@ -99,43 +102,6 @@ const HEATMAP = { ready: true, opacity: true, wms: BIOPORTAL_WMS, heatmap: true,
 const OVERVIEW_BOUNDS = [13.4, 42.3, 19.55, 46.6];
 const WITH_OVERVIEW = (url) => ({ ...HEATMAP, overview: { url, bounds: OVERVIEW_BOUNDS, maxZoom: 8 } });
 
-const PERISKE_DETAILS = {
-	fields: [
-		{ keys: ['dat_opaza', 'dat_op'], label: 'Datum opažanja' },
-		{ keys: ['god_op'], label: 'Godina opažanja' },
-		{ keys: ['opazac', 'promat', 'prom'], label: 'Opažač' },
-		{ keys: ['lokalitet', 'lokal', 'lok', 'naziv_lok'], label: 'Lokalitet' },
-		{ keys: ['dubina_m', 'dubina'], label: 'Dubina (m)' },
-		{ keys: ['br_jedinki', 'br_jedi', 'br_jed'], label: 'Broj jedinki' },
-		{ keys: ['br_uginul', 'br_ugin', 'br_ugi'], label: 'Broj uginulih' },
-		{ keys: ['dojav_stan', 'stanje'], label: 'Stanje' },
-		{ keys: ['prov_stanj', 'provjera', 'provjer'], label: 'Provjera stanja' },
-		{ keys: ['nesig_koor', 'nesigurno', 'nesigu', 'nes'], label: 'Nesigurno' },
-		{ keys: ['napomena'], label: 'Napomena' },
-		{ keys: ['referenca'], label: 'Izvor' }
-	]
-};
-
-const BEETLE_DETAILS = {
-	fields: [
-		{ keys: ['validno_im', 'val_im', 'val_ime'], label: 'Vrsta' },
-		{ keys: ['ime_op', 'im_op'], label: 'Ime' },
-		{ keys: ['prez_op'], label: 'Prezime' },
-		{ keys: ['im_pre_op'], label: 'Ime i prezime' },
-		{ keys: ['dat_doj', 'dat_obj'], label: 'Datum dojave' },
-		{ keys: ['god_doj'], label: 'Godina dojave' },
-		{ keys: ['dat_op'], label: 'Datum opažanja' },
-		{ keys: ['dat_nal'], label: 'Datum nalaza' },
-		{ keys: ['vrije_pron', 'vrij_pr', 'vri_pro', 'vri_pron'], label: 'Vrijeme nalaza' },
-		{ keys: ['lok', 'lokal'], label: 'Lokalitet' },
-		{ keys: ['opis_lok'], label: 'Opis lokacije' },
-		{ keys: ['spol'], label: 'Spol' },
-		{ keys: ['br_jed', 'br_jedi'], label: 'Broj jedinki' },
-		{ keys: ['nesig', 'nesigur', 'nesigurnos', 'nesigu'], label: 'Nesigurno' },
-		{ keys: ['foto'], label: 'Fotografija' }
-	]
-};
-
 const PROTECTED_AREA_DETAILS = {
 	fields: [
 		{ keys: ['naziv_akt', 'naziv'], label: 'Naziv' },
@@ -150,6 +116,59 @@ const PROTECTED_AREA_DETAILS = {
 // Karta staništa 2004: 9 layers, one panel. The big ones (land polygons 60,555 ≈ 60 MB, watercourses 22,859 lines,
 // rocks and screes 22,420, sea coast 5,305, sea bottom 3,485 polygons) are drawn by the WMS (512 px tiles: ≤1.9 s for
 // Croatia, ≤0.5 s zoomed in) and clicked via GetFeatureInfo; points, underground and inland waters stay WFS (≤1,121).
+// Periske and saproksilni kornjaši: reports in one WFS layer per year (≤999 points, ≤462 KB, ~0.1 s each), each shown
+// as one row whose layer turns on the others (`members`), every one loaded whole and coloured by its year: cold greens
+// to blues for Periske, warm yellows to reds for kornjaši. The oldest layer hosts the row, so the newest years are
+// drawn on top.
+const PERISKE = {
+	'dzzpnpis:periska_arhivski_podaci': ['arhiv', '#a1d99b'],
+	'dzzpnpis:periske_dojave_strucnjaka': ['stručnjaci', '#41ab5d'],
+	'dzzpnpis:periska_dojave_gradana_2019': ['2019', '#7fcdbb'],
+	'dzzpnpis:periska_dojave_gradana_2020': ['2020', '#41b6c4'],
+	'dzzpnpis:periske_dojave_gradana_2021': ['2021', '#1d91c0'],
+	'dzzpnpis:periske_dojave_gradana_2022': ['2022', '#225ea8'],
+	'dzzpnpis:periske_dojave_gradana_2023': ['2023', '#253494'],
+	'dzzpnpis:periske_dojave_gradana_2024': ['2024', '#081d58']
+};
+const BEETLES = {
+	'dzzpnpis:saproksilni_kornjasi_dojave_2015': ['2015', '#fed976'],
+	'dzzpnpis:saproksilni_kornjasi_dojave_2016': ['2016', '#feb24c'],
+	'dzzpnpis:saproksilni_kornjasi_dojave_2017': ['2017', '#fd8d3c'],
+	'dzzpnpis:saproksilni_kornjasi_dojave_2018': ['2018', '#f03b20'],
+	'dzzpnpis:saproksilni_kornjasi_dojave_2019': ['2019', '#bd0026']
+};
+const asOneRow = (series, panel, label) => {
+	const [host, ...members] = Object.keys(series);
+	const circle = (color) => ({ 'circle-color': color, 'circle-radius': 5, 'circle-stroke-width': 1 });
+	return Object.fromEntries(Object.entries(series).map(([name, [legend, color]]) => [name, {
+		panel, legend, loadAll: true, paint: { circle: circle(color) },
+		...(name === host ? { ready: true, label, members } : { hide: true })
+	}]));
+};
+
+// Divlji deponiji otpada u speleološkim objektima: the register as of 2021 (763 caves) and 2024 (825), merged into one
+// layer (89 KB gzipped together). Each cave has one page on cistopodzemlje.info, the only reliable key (the cadastre
+// number is often "-"): 727 caves are in both (the 2024 record wins), 98 only in 2024, 36 only in 2021.
+// Names from zoom 12, without their "(sinonimi: …)".
+const CAVE = ['get', 'ime_obj'];
+const CAVE_DUMPS = {
+	ready: true, label: 'Divlji deponiji otpada u speleološkim objektima', panel: SpeleoDeponij, loadAll: true,
+	merge: ['dzzpnpis:divlji_deponiji_2021'], id: (f) => String(f.properties.link ?? f.properties.povez).replace(/^https?:\/\//, ''),
+	paint: { circle: { 'circle-color': '#8c510a', 'circle-radius': 5, 'circle-stroke-width': 1 } },
+	symbol: {
+		layout: {
+			'text-field': ['step', ['zoom'], '', 12,
+				['case', ['>', ['index-of', ' (', CAVE], 0], ['slice', CAVE, 0, ['index-of', ' (', CAVE]], CAVE]],
+			'text-font': ['Noto Sans Bold'],
+			'text-size': 11,
+			'text-variable-anchor': ['left'],
+			'text-radial-offset': 0.7,
+			'text-max-width': 10
+		},
+		paint: { 'text-color': 'rgba(0, 0, 0, 0.8)', 'text-halo-color': 'rgba(255, 255, 255, 0.7)', 'text-halo-width': 1.5 }
+	}
+};
+
 // Both habitat maps share one sidebar section ("2004 - …", "2016 - …"), and only one of their land polygon layers can be
 // on: they cover the same ground.
 const HABITATS = 'Karta staništa';
@@ -163,6 +182,30 @@ const MARINE_2023 = { ready: true, panel: MorskaStanista2023, wms: BIOPORTAL_WMS
 
 // Croatian names of data providers whose GetCapabilities give them in English, for the map's credits.
 export const PROVIDER_NAMES = { 'Croatian Agency for the Environment and Nature': 'Hrvatska agencija za okoliš i prirodu' };
+
+// Digitalni ortofoto (DGU): one WMS per survey, in the "Digitalni ortofoto" section at the top, one at a time. Images
+// need a short-lived key (`authKey`; the open services carry a watermark); capabilities don't. The services don't list
+// EPSG:3857 but draw it (~1 s per 512 px tile). JPEG tiles are 6× smaller than PNG (~110 KB vs ~700 KB) but white where
+// a survey has no image, so only surveys of all of Croatia use JPEG; the yearly ones cover the east or the west.
+const DGU_KEY = 'https://geoportal.dgu.hr/api/authkey/userAuthKey';
+// A single year covers only the east or the west half and isn't cut cleanly, so those a two-year composite holds are
+// left out; the newest pair (2024 west, 2025/2026 east, both transparent PNG) is drawn together as one row (`together`).
+const DGU_WMS = (name) => `https://geoportal.dgu.hr/services/auth/inspire/${name}/wms`;
+const ORTHOPHOTOS = [
+	['orthophoto_2011', '2011.', true],
+	['orthophoto_2014-2016', '2014.-2016.', true],
+	['orthophoto_2017_2018', '2017./2018.', true],
+	['orthophoto_2019_2020', '2019./2020.', true],
+	['orthophoto_2021_2022', '2021./2022.', true],
+	['orthophoto_lidar_2022_2023', '2022./2023.', true], // the LIDAR survey's orthophoto
+	['orthophoto_2023_2024', '2023./2024.', true],
+	['orthophoto_2024', '2024./2025.', false, ['orthophoto_2025_2026']],
+	['orthophoto_1000', '1:1000 potres Zagreb'],
+	['orthophoto_500', '1:500 potres Sisačko-moslavačka županija']
+].map(([name, title, whole, together]) => ({
+	title, section: 'Digitalni ortofoto (podloga)', type: 'WMS', url: DGU_WMS(name), authKey: DGU_KEY, exclusive: 'ortofoto', opacity: true,
+	...(whole && { format: 'image/jpeg' }), ...(together && { together: together.map(DGU_WMS) })
+}));
 
 export default [
 	{
@@ -184,19 +227,10 @@ export default [
 		type: 'WFS',
 		url: 'https://services.bioportal.hr/wfs',
 		layers: {
-			'dzzpnpis:periska_dojave_gradana_2019': { details: PERISKE_DETAILS },
-			'dzzpnpis:periska_dojave_gradana_2020': { details: PERISKE_DETAILS },
-			'dzzpnpis:periske_dojave_gradana_2021': { details: PERISKE_DETAILS },
-			'dzzpnpis:periske_dojave_gradana_2022': { details: PERISKE_DETAILS },
-			'dzzpnpis:periske_dojave_gradana_2023': { details: PERISKE_DETAILS },
-			'dzzpnpis:periske_dojave_gradana_2024': { details: PERISKE_DETAILS },
-			'dzzpnpis:periske_dojave_strucnjaka': { details: PERISKE_DETAILS },
-			'dzzpnpis:periska_arhivski_podaci': { details: PERISKE_DETAILS },
-			'dzzpnpis:saproksilni_kornjasi_dojave_2015': { details: BEETLE_DETAILS },
-			'dzzpnpis:saproksilni_kornjasi_dojave_2016': { details: BEETLE_DETAILS },
-			'dzzpnpis:saproksilni_kornjasi_dojave_2017': { details: BEETLE_DETAILS },
-			'dzzpnpis:saproksilni_kornjasi_dojave_2018': { details: BEETLE_DETAILS },
-			'dzzpnpis:saproksilni_kornjasi_dojave_2019': { details: BEETLE_DETAILS },
+			...asOneRow(PERISKE, Periska, 'Periske'),
+			...asOneRow(BEETLES, SaproksilniKornjas, 'Saproksilni kornjaši'),
+			'dzzpnpis:depo_speleo_2024': CAVE_DUMPS,
+			'dzzpnpis:divlji_deponiji_2021': { hide: true },
 			'dzzpnpis:zasticeno_podrucje_poligoni': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:zasticeno_podrucje_tocke': { details: PROTECTED_AREA_DETAILS },
 			'dzzpnpis:kopnena_stanista': { ...HABITAT_2004_WMS, exclusive: 'kopnena staništa', opacity: true },
@@ -255,5 +289,6 @@ export default [
 			'hr.fd.opasnost-od-poplave-velika-vjerojatnost': { ready: true },
 			'hr.fd.vjerojatnost-pojavljivanja': { ready: true }
 		}
-	}
+	},
+	...ORTHOPHOTOS
 ];

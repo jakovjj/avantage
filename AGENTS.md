@@ -84,7 +84,9 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 - `wmsZooms` turns the layer's `Min/MaxScaleDenominator` into the source's `minzoom`/`maxzoom`, so MapLibre skips
   empty requests and **enlarges the last real tiles** beyond the server's limit (e.g. Hrvatske vode flood maps).
   Remember: for 512 px tiles, MapLibre requests tile zoom ≈ map zoom.
-- Show the layer's legend (`legendUrl`) when it is on.
+- Show the layer's legend (`legendUrl`) when it is on, unless it's a single unlabelled swatch (≤ 20 × 20 px, e.g. DGU).
+- The source's `bounds` is the layer's lon/lat extent from GetCapabilities (`wmsBounds`), so no tiles are asked for
+  beyond it (DGU draws those black).
 - A click on a `featureInfo` layer (`wms.js`) sends GetFeatureInfo for a 9 px box around the click, JSON, one feature,
   with `PROPERTYNAME` listing the layer's attributes from WFS DescribeFeatureType: without it the answer carries the
   geometry, and one big Bioportal habitat polygon is 23.5 MB (5 s) instead of 0.4 KB (~0.3 s). The highlight is then
@@ -97,6 +99,16 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 - Overlays stack by the same kind (`addOverlay`'s `kind`): points over lines over areas and plain rasters, whatever
   order they're turned on in; rasters stay under the basemap labels, map-drawn features above them.
 
+**Services behind a key** (service-level `authKey`: the URL that hands out the key)
+- DGU geoportal (`geoportal.dgu.hr/services/auth/…`, "za registrirane korisnike"; the open `services/inspire/…` ones
+  carry a watermark): images need `authKey`, GetCapabilities doesn't. `keepKey` (`utils.js`) gets a key from
+  `https://geoportal.dgu.hr/api/authkey/userAuthKey` (`{ authKey, expires, overlay }`, ~8 min, renewed `overlay` = 20 s
+  early by passing the old key back; CORS allows any origin) and `setSiteParams` (`map.js`) makes MapLibre add it to
+  every request to that site (`transformRequest`), since tile URLs are built once. Capabilities are read without a key:
+  read with one, they bake it into the GetMap URLs.
+- Service-level `format` — WMS tile format instead of PNG: `image/jpeg` for photos covering their whole extent (DGU
+  JPEG tiles ~110 KB vs PNG ~700 KB, same speed), never for partial ones (JPEG is white where there's no image).
+
 **WMTS**
 - Only layers with an EPSG:3857 tile matrix set starting at zoom 0 can be shown (MapLibre is Web Mercator only).
 
@@ -108,7 +120,12 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `group` — sidebar group title when it can't come from the `Group - layer` title prefix.
 - `label` — the layer's row text in its group when it can't come from the title (rows are sorted by it).
 - `opacity` — WMS: an opacity slider under the row while the layer is on, for rasters covering the whole map
-  (the Osjetljivost maps and the habitat polygon layers).
+  (the Osjetljivost maps, the habitat polygon layers; service-level for the Digitalni ortofoto surveys, where it also
+  moves a `together` service's half).
+- `members` — names of hidden layers this row turns on and off with itself, so several layers show as one row (its
+  `label`); with each member's `legend` (short text) and `paint.circle['circle-color']`, the row shows a colour legend
+  while on, and its count is their total.
+- `legend` — a member's text in that legend, also passed to the panel (`layer` prop).
 - `ready` — a designed layer: listed on top under its service's `category` (see Ready layers).
 - `minZoom` — map zoom below which the layer is neither drawn nor requested.
 - `details` — labelled fields shown first in the right-hand details panel: `{ fields: [{ keys, label }] }`; all other
@@ -119,17 +136,21 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `heatmap` — `true`: the sidebar shows the layer with the heatmap icon.
 - `featureInfo` — with `wms`: a click on the map asks the WMS for the feature there (see WMS above).
 - `hide` — leave the layer out of the sidebar (e.g. its data is shown from another service instead).
-- `panel` — Svelte component (`src/lib/panels/`) replacing the properties table in the details panel.
+- `panel` — Svelte component (`src/lib/panels/`) replacing the properties table in the details panel; it gets the
+  feature's `properties` and the layer's tweaks (`layer`).
 - `loadAll` — WFS only: download the whole layer once, without the 100 KB cap, and never switch to viewport mode.
   Only after measuring that the full download is acceptable (compressed size, time).
+- `merge` — WFS with `loadAll`: names of other layers of the same service loaded whole into this one; a feature in
+  several counts once, by the `id` hook, and the layer's own copy wins (hide the merged layers).
 - `images` — `{ name: SVG markup }` icons for `symbol`, drawn at half the SVG's pixel size so their edges stay sharp.
 - `symbol` — `{ layout, paint }` of one extra MapLibre symbol layer on top of the layer's own: icons (markers circles
   can't draw, e.g. triangles) and labels (`text-font` must be a basemap font: `Noto Sans Regular/Bold/Italic`).
 - `snapshot` — WFS only: URL (`import … from './snapshots/<layer>.json?url'`) of a saved GetFeature response, loaded
   whole instead of asking the server. For small layers whose server is very slow. See Snapshots.
 - `tileSize` — WMS tile size in px (default 512).
-- `exclusive` — key shared by layers of which only one may be on: turning one on turns the others off (the 11
-  Bioportal sensitivity maps, which cover all of Croatia, share `group: 'Osjetljivost'` and `exclusive`). They keep
+- `exclusive` — key shared by layers of which only one may be on, also across services (a service-level `exclusive`
+  applies to all its layers): turning one on turns the others off (the 11 Bioportal sensitivity maps, which cover all
+  of Croatia, share `group: 'Osjetljivost'` and `exclusive`; the Digitalni ortofoto surveys share one too). They keep
   checkboxes, so the active one can still be turned off.
 - `overview` — WMS: `{ url, bounds: [w, s, e, n], maxZoom }`, a saved image of the whole layer (`./snapshots/*.png?url`)
   shown until map zoom `maxZoom` + 0.5 instead of the server's tiles, for layers the server renders very slowly when
@@ -137,6 +158,11 @@ Keep these to what cannot be inferred automatically. Supported keys:
   the tile minzoom that first appears exactly there (zoom 8 with 256 px tiles → 10). It is set on the source, not its
   layer, so the source stays in use and the provider stays credited. Check by counting `sourcedata` tile events per
   zoom; the network panel doesn't show MapLibre's worker requests. See Snapshots.
+
+Service-level keys besides `title`, `url`, `type` and `layers`: `category` (ready layers' section on top), `section`
+(services listed together in one section of the full list, one row each, named by `title`: `flat` in `Source.svelte`),
+`authKey`, `format` (see WMS above) and `together` (other WMS services whose first layer is drawn with this one, as one
+row: halves of the country from different services).
 
 New tweak types must be generic (applied by `map.js`/`wfs.js`/`Source.svelte`/the page), not special-cased per
 source in code.
@@ -151,7 +177,12 @@ The sidebar lists only these on top, marked `ready`, under three categories name
 **Otpad** (AZO WFS), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
 **Hrvatske vode** (all 4 flood maps, the user's choice). Every other layer shows in its service's section only when
 "Prikaži sve slojeve" is ticked (a developer option at the bottom, next to "Dodaj ručno slojeve"); a service whose
-layers are all on top is left out there. A thin grey rule and the user's note "Niže navedeni slojevi prikazivat će se
+layers are all on top is left out there. **Digitalni ortofoto (podloga)** (DGU, 10 rows: 2011, 2014–2016, the two-year composites 2017/2018 to 2023/2024,
+2022/2023 (the LIDAR survey, named like the rest), 2024 west + 2025/2026 east as one row "2024./2025.", and the 1:1000 Zagreb / 1:500 Sisak
+earthquake ones) is a `section` at the very top of the sidebar, always shown, one survey at a time (service-level
+`exclusive`); whole-country surveys use JPEG. Single years that a composite holds are
+left out (each covers half the country, not cut cleanly). Hiding the list takes its layers off the map (each `Source` removes its
+layers when it goes away) but keeps them stored, so they come back with it. A thin grey rule and the user's note "Niže navedeni slojevi prikazivat će se
 na karti bez obrade." separate them from the ready layers (the one sentence allowed in the sidebar).
 
 - **Lokacije odbačenog otpada** (AZO) — WFS only (`otpad:odbaceni_otpad`; the WMS layer is hidden), `loadAll`
@@ -181,6 +212,32 @@ na karti bez obrade." separate them from the ready layers (the one sentence allo
   repeats them, `tip` names the layer, `id_rel`/`fid` are internal. Panel `Staniste2004.svelte` for all 9: layer,
   then each type (name, code), names and codes paired only when they match up. The WMS style colours 109 codes
   separately, so no class swatches. Clicks on lines hit within a few px (GeoServer's default buffer).
+- **Periske** and **Saproksilni kornjaši** (Bioportal) — one row each (`members`), every layer `loadAll` (≤999 points,
+  ≤462 KB, ~0.1 s each): Periske 2,446 points in 8 layers (archive 2006–2018, experts, citizen reports 2019–2024),
+  kornjaši 2,380 in 5 (citizen reports 2015–2019). Coloured by layer (year): cold greens to blues for Periske, warm
+  yellows to reds for kornjaši, so the two never mix; the oldest hosting the row so the newest are drawn on top. Every year names its fields differently, so the panels take the
+  first field present and skip placeholders ("Nepoznato", "nije navedeno", "ne"). `nesig*` is the location's
+  uncertainty in metres (mostly 25–30 m for kornjaši; shown only from 1 m). Coordinates (`x_*`, `y_*`, stated
+  `nav*_k*`) and the report number `br_nal` aren't shown; `foto` is only "da"/"ne" (no photo links are published). Bioportal
+  has no kornjaši reports after 2019, although ZZOP still runs the yearly call (its 2024 call names the species
+  jelenak, alpinska strizibuba, velika četveropjega strizibuba).
+  Both panels have one structure, as plain lines (no label/value tables): a type label ("Periska - dojava građana" /
+  "dojava stručnjaka" / "arhivski podatak", "Saproksilni kornjaš - dojava građana"; no year, the date has it), the
+  species as the heading, Croatian with the Latin name small and grey beside it ("Plemenita periska *Pinna
+  nobilis*"; the beetles' names from ZZOP's call, `NAMES` in the panel), the place (and its description), the
+  date and observer in grey, the finding in bold (Periska's state; the beetle's sex, with the count when above one),
+  one sentence of details ("1 jedinka na 2 m dubine, od toga…"; "Dojavljeno …, s fotografijom"), and "Točnost
+  lokacije ±… m" small at the bottom. Nouns after numbers use `plural` (`utils.js`).
+  Dates go through `formatDate` (`utils.js`): "22.7.2019.".
+- **Divlji deponiji otpada u speleološkim objektima** (Bioportal) — the register as of 2024 (`depo_speleo_2024`, 825
+  caves) with 2021 (`divlji_deponiji_2021`, 763) `merge`d in: 89 KB gzipped together, 861 caves. Each cave has one
+  page on cistopodzemlje.info, the `id` (the cadastre number is often "-"): 727 caves are in both (the 2024 record
+  wins), 98 only in 2024, 36 only in 2021 (maybe cleaned up since). The AZO otpad WFS has the same register yearly
+  (`depo_speleo_2017…2025`, growing to 842), not used. Brown dots; from zoom 12 each cave's name beside it
+  (`symbol`, like Odlagališta; a `step` on zoom, without "(sinonimi: …)"; colliding names are dropped). Panel `SpeleoDeponij.svelte`: the cave's name
+  ("(sinonimi: …)" moved to "Također: …"), length and depth as "18 m kanala, 14 m u dubinu" (number
+  first; "duljina" and "dubina" read alike), cadastre number, the club that reported it, "Samo u popisu
+  iz 2021." for a cave missing from 2024 (only 2021 has `povez`), and "Više na cistopodzemlje.info" (https).
 - **Karta morskih staništa 2023** (Bioportal `morska_stanista_p_1_1` 31,993 polygons, `_l_1_1` 15,455 lines,
   `_pt_1_1` 62,144 points; 200 polygons ≈ 3 MB as WFS) — all 3 drawn by the WMS with `featureInfo` (~0.05 s), rows
   labelled "2023 - more - poligoni / linije / točke". Polygons and points take ~4 s per 512 px view of Croatia, so
@@ -243,7 +300,7 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   logos, counters/badges, spinners, empty-state prose. The one loading indicator is the green bar below.
 - **CSS stays small and plain**: native form controls (no custom checkboxes), no rounded corners, no shadows,
   gradients, animations or transitions, no colour themes/variables. A few lines per component is the target.
-- Sidebar: `Avantage` title, the layer filter, the three categories of ready layers, then (with "Prikaži sve
+- Sidebar: `Avantage` title, the layer filter, the Digitalni ortofoto section, the three categories of ready layers, then (with "Prikaži sve
   slojeve") one `<details>` per service and the user's own services; at the bottom the two option checkboxes and the
   URL form. No GetCapabilities ("`<TYPE> endpoint`") links and no service type (WFS/WMS) in the sidebar: they put
   off ordinary users.
@@ -258,6 +315,7 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   time; a click outside or Escape closes it): the layer's title, that text and "Više" with a new-tab icon linking to
   the metadata record (NIPP geoportal page), otherwise a "`<TYPE>` endpoint" link. Never write our own texts there. The NIPP records can't be read from the browser (the
   geoportal sends `Access-Control-Allow-Origin: *, *`, which browsers reject), so they are only linked.
+- No middle dot (·) anywhere in the UI; join parts with " - " or a comma.
 - Numbers shown to users go through `formatNumber` (`utils.js`): thousands split by a thin space ("9 700 000"),
   **never a dot or comma** (they read as decimals); the decimal mark is a comma ("0,3").
 - Details panel (right): a ready layer's own `panel`, otherwise the properties table. A panel starts with a small
@@ -273,7 +331,7 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
 - Loading bar: a thin green (`#4caf50`) block sweeping along the top edge of the page while any download runs
   (`track` in `utils.js`: WFS, GetCapabilities, the basemap style) or WMS/WMTS tiles load (`onLoading` from `createMap`).
   Basemap tiles and re-tiling already loaded GeoJSON don't count.
-- Debug readout: `lat, lon · z zoom` (two decimals each) in the **top-right** corner of the map. Map controls must
+- Debug readout: `lat, lon, z zoom` (two decimals each) in the **top-right** corner of the map. Map controls must
   not cover it.
 - Code, identifiers and comments are **English**. Comments explain *why*, briefly.
 - `localStorage` is only for per-user conveniences (custom services, enabled layers) and every access is wrapped in

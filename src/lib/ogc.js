@@ -122,11 +122,18 @@ async function readCapabilities(url, type) {
 	throw new Error(errors.join('\n'));
 }
 
-function wmsTiles(endpoint, name, size) {
+function wmsTiles(endpoint, name, size, format = 'image/png') {
 	const url = endpoint.getMapUrl([name], {
-		widthPx: size, heightPx: size, crs: 'EPSG:3857', extent: [0, 0, 0, 0], outputFormat: 'image/png'
+		widthPx: size, heightPx: size, crs: 'EPSG:3857', extent: [0, 0, 0, 0], outputFormat: format
 	});
 	return url.replace(/BBOX=[^&]*/i, 'BBOX={bbox-epsg-3857}') + '&TRANSPARENT=TRUE';
+}
+
+/** A WMS layer's extent in lon/lat, so MapLibre asks for no tiles beyond it (some servers draw those black or white). */
+function wmsBounds(endpoint, name) {
+	const boxes = endpoint.getLayerByName(name)?.boundingBoxes ?? {};
+	const bounds = boxes['CRS:84'] ?? boxes['EPSG:4326'];
+	return bounds?.every(Number.isFinite) ? { bounds } : {};
 }
 
 /** Tile zooms where a WMS layer draws anything, from its declared scale limits. */
@@ -208,12 +215,12 @@ export function outlineSource({ endpoint }, name, featureId, color, point) {
 	return { type: 'raster', tileSize: WMS_TILE, tiles: [wmsTiles(endpoint, name, WMS_TILE) + filter] };
 }
 
-/** MapLibre tile source for a WMS or WMTS layer; `tileSize` in px for WMS. */
-export const rasterSource = (service, name, tileSize = WMS_TILE) => ({
+/** MapLibre tile source of a WMS or WMTS layer: WMS tiles of `tileSize` px, PNG unless `format` says otherwise. */
+export const rasterSource = (service, name, tileSize = WMS_TILE, format) => ({
 	type: 'raster',
 	attribution: attribution(service),
 	...(service.type === 'WMS'
-		? { tileSize, tiles: [wmsTiles(service.endpoint, name, tileSize)], ...wmsZooms(service.endpoint, name, tileSize) }
+		? { tileSize, tiles: [wmsTiles(service.endpoint, name, tileSize, format)], ...wmsZooms(service.endpoint, name, tileSize), ...wmsBounds(service.endpoint, name) }
 		: { tileSize: 256, tiles: [wmtsTiles(service.endpoint, name)] })
 });
 

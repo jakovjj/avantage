@@ -1,16 +1,33 @@
 <script module>
+	import { setSiteParams } from './map.js';
+	import { keepKey } from './utils.js';
+
 	// The open (i) box, one at a time across all services: { id: `${url}#${layer}`, left, top or bottom } in viewport px.
 	let shownInfo = $state(null);
+
+	// Services behind a short-lived key (`authKey`: the URL that hands it out): one key per URL, kept fresh, and MapLibre
+	// adds it to every request to that site.
+	const keys = new Map();
+
+	// Layers sharing an `exclusive` key work like radio buttons, also across services (one Digitalni ortofoto at a time):
+	// key → { id, off } of the layer of that key that was turned on last.
+	const exclusiveOn = new Map();
+	function useKey(keyUrl) {
+		if (!keys.has(keyUrl)) keys.set(keyUrl, keepKey(keyUrl, (key) => setSiteParams(new URL(keyUrl).origin, { authKey: key })));
+		return keys.get(keyUrl);
+	}
 </script>
 
 <script>
-	import { untrack } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 	import { inspect, legendUrl, rasterSource } from './ogc.js';
+	import { formatNumber } from './utils.js';
 	import { RASTER_OPACITY, addOverlay, removeOverlay, setOpacity } from './map.js';
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, layers = {}, part, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	let { map, url, type, title, layers = {}, authKey, format, together, exclusive, opacity: slider, part, flat = false, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	// `flat`: the service's rows sit straight in a section of the page (`open` when it is), its one layer named `title`.
 	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
 	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
 	let service = $state(), error = $state(), attempt = $state(0), loading = $state(false);
@@ -33,6 +50,11 @@
 	let searchSnapshot;
 	const active = $derived(Object.values(on).some(Boolean));
 	const hide = {}; // per layer name: removes it from the map
+	// When the list goes away (the full list hidden, a service removed), its layers leave the map with it; they stay
+	// stored, so they come back on when it's shown again.
+	onDestroy(() => {
+		for (const name in on) if (on[name]) hide[name]?.();
+	});
 
 	// Grey icon of what a layer looks like on the map (12×12 SVG content).
 	const KINDS = {
@@ -42,6 +64,13 @@
 		heatmap: ['toplinska karta', '<rect x="1" y="1" width="3" height="3" opacity=".3"/><rect x="4.5" y="1" width="3" height="3" opacity=".6"/><rect x="8" y="1" width="3" height="3"/><rect x="1" y="4.5" width="3" height="3" opacity=".6"/><rect x="4.5" y="4.5" width="3" height="3"/><rect x="8" y="4.5" width="3" height="3" opacity=".6"/><rect x="1" y="8" width="3" height="3"/><rect x="4.5" y="8" width="3" height="3" opacity=".6"/><rect x="8" y="8" width="3" height="3" opacity=".3"/>'],
 		raster: ['slika', '<rect x="1" y="1.5" width="10" height="9" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M2 10l3-4 2 2.5 1.5-1.5L10 10Z"/>']
 	};
+	// A layer's note is its feature count or a status ("…", "približi kartu", an error); a row with `members` shows their
+	// total once all are counted, else the first status.
+	function rowNote(name) {
+		const notes = [name, ...(layers[name]?.members ?? [])].map((n) => note[n] ?? '');
+		const counts = notes.every((n) => typeof n === 'number');
+		return counts ? formatNumber(notes.reduce((a, b) => a + b)) : notes.find((n) => typeof n !== 'number');
+	}
 	const kindOf = (l) => (layers[l.name]?.heatmap ? 'heatmap' : l.kind);
 
 	// The page's reset button bumps `reset`: turn every layer off and clear the filter.
@@ -78,7 +107,7 @@
 	// the full list (which leaves out services whose layers are all listed on top).
 	$effect(() => {
 		attempt;
-		if ((rootOpen || filterQuery.trim() || restore.length || part === 'rest') && !service && !error && !loading) {
+		if (((flat ? open : rootOpen) || filterQuery.trim() || restore.length || (part === 'rest' && !flat)) && !service && !error && !loading) {
 			loading = true;
 			inspect(url, type).then(
 				(s) => (service = s, loading = false),
@@ -165,22 +194,33 @@
 		const id = `${url}#${name}`;
 		store(id, on[name]);
 		note[name] = '';
+		// A row with `members` turns those (hidden) layers on and off with it.
+		for (const m of layers[name]?.members ?? []) if (on[m] !== on[name]) (on[m] = on[name]), toggle(m);
 		if (!on[name]) return (delete opacity[name], hide[name]?.());
-		// Layers sharing an `exclusive` key work like radio buttons: turning one on turns the others off.
-		const set = layers[name]?.exclusive;
-		if (set) for (const other in on) if (other !== name && on[other] && layers[other]?.exclusive === set) (on[other] = false), toggle(other);
+		// Turning on a layer with an `exclusive` key (its own, or the service's) turns off the one that was on.
+		const set = layers[name]?.exclusive ?? exclusive;
+		if (set) {
+			const last = exclusiveOn.get(set);
+			if (last?.id !== id) last?.off();
+			exclusiveOn.set(set, { id, off: () => on[name] && ((on[name] = false), toggle(name)) });
+		}
 		if (service.type === 'WFS' && !layers[name]?.wms) {
 			hide[name] = showWfs(map, id, service, name, layers[name], (t) => (note[name] = t));
 			return;
 		}
 		try {
 			const [src, layer] = layers[name]?.wms ? await wmsSource(name) : [service, name];
-			if (!on[name]) return; // turned off while the WMS capabilities were loading
+			// `together`: other WMS services whose first layer is drawn with this one, as one row (each covers another part).
+			const others = await Promise.all((together ?? []).map((u) => inspect(u, 'WMS')));
+			if (authKey) await useKey(authKey);
+			if (!on[name]) return; // turned off while the WMS capabilities or the key were loading
 			const kind = service.layers.find((l) => l.name === name)?.kind;
-			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize), layers[name], kind);
+			const ids = [id, ...others.map((_, i) => `${id}+${i + 1}`)];
+			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize, format), layers[name], kind);
+			others.forEach((o, i) => addOverlay(map, ids[i + 1], rasterSource(o, o.layers[0].name, layers[name]?.tileSize, format), layers[name], kind));
 			legend[name] = legendUrl(src, layer);
 			const stopQueries = layers[name]?.featureInfo && queryOnClick(map, id, src, layer, service, name, kind === 'points');
-			hide[name] = () => (stopQueries?.(), removeOverlay(map, id));
+			hide[name] = () => (stopQueries?.(), ids.forEach((o) => removeOverlay(map, o)));
 		} catch (e) {
 			note[name] = e.message;
 			on[name] = false;
@@ -191,11 +231,18 @@
 
 
 {#if !(part && service && !listed.length) && (!filterQuery.trim() || !service || error || filtered.length)}
+{#if flat}{@render body()}{:else}
 <details bind:open={rootOpen}>
 	<summary>
 		<span class:active>{title ?? service?.info.title ?? url}</span>
 		{#if onremove}<button onclick={(e) => (e.preventDefault(), onremove())} title="Ukloni">✕</button>{/if}
 	</summary>
+	{@render body()}
+</details>
+{/if}
+{/if}
+
+{#snippet body()}
 	{#if error}
 		<pre>{error}</pre>
 		<button onclick={retry}>Pokušaj ponovno</button>
@@ -210,10 +257,9 @@
 				{/each}
 			</details>
 		{/each}
-		{#each sections.ungrouped as l (l.name)}{@render row(l, l.title)}{/each}
+		{#each sections.ungrouped as l (l.name)}{@render row(l, layers[l.name]?.label ?? (flat && listed.length === 1 ? title : l.title))}{/each}
 	{/if}
-</details>
-{/if}
+{/snippet}
 
 {#if infoLayer}
 	<!-- Official information only: the layer's own abstract, then its metadata record, else where the text came from. -->
@@ -240,7 +286,7 @@
 		<input type="checkbox" bind:checked={on[l.name]} onchange={() => toggle(l.name)} />
 		<span>
 			{text}
-			<small>{note[l.name] ?? ''}</small>
+			<small>{rowNote(l.name)}</small>
 		</span>
 		{#if icon}<svg viewBox="0 0 12 12" fill="currentColor"><title>{kind}</title>{@html icon}</svg>{/if}
 		{#if l.about}
@@ -249,11 +295,22 @@
 			</button>
 		{/if}
 	</label>
-	{#if on[l.name] && layers[l.name]?.opacity}
+	<!-- The layer's own `opacity` tweak or its service's; with `together`, the other services' halves follow. -->
+	{#if on[l.name] && (layers[l.name]?.opacity ?? slider)}
 		<input type="range" min="0" max="1" step="0.05" title="Neprozirnost" value={opacity[l.name] ?? RASTER_OPACITY}
-			oninput={(e) => setOpacity(map, `${url}#${l.name}`, (opacity[l.name] = +e.currentTarget.value))} />
+			oninput={(e) => {
+				const id = `${url}#${l.name}`;
+				opacity[l.name] = +e.currentTarget.value;
+				for (const o of [id, ...(together ?? []).map((_, i) => `${id}+${i + 1}`)]) setOpacity(map, o, opacity[l.name]);
+			}} />
 	{/if}
-	{#if on[l.name] && legend[l.name]}<img src={legend[l.name]} alt="" />{/if}
+	{#if on[l.name] && layers[l.name]?.members}
+		<ul class="swatches">
+			{#each [l.name, ...layers[l.name].members] as n}<li><span style:background={layers[n].paint.circle['circle-color']}></span>{layers[n].legend}</li>{/each}
+		</ul>
+	{/if}
+	<!-- A legend of one unlabelled swatch (DGU orthophotos: 20 × 20 px) says nothing. -->
+	{#if on[l.name] && legend[l.name]}<img src={legend[l.name]} alt="" onload={(e) => e.currentTarget.naturalWidth <= 20 && e.currentTarget.naturalHeight <= 20 && (legend[l.name] = null)} />{/if}
 {/snippet}
 
 <style>
@@ -268,6 +325,8 @@
 	a, img, small, pre + button { display: block; margin: 0 0 6px 12px; }
 	label small, summary small { display: inline; margin: 0; }
 	label > span { flex: 1; }
+	.swatches { display: flex; flex-wrap: wrap; gap: 2px 10px; margin: 0 0 6px 31px; padding: 0; list-style: none; font-size: 12px; color: #666; }
+	.swatches span { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 50%; }
 	input[type='range'] { display: block; box-sizing: border-box; width: calc(100% - 31px); margin: 0 0 6px 31px; }
 	svg { flex: none; align-self: center; width: 14px; height: 14px; color: #777; }
 	.info { display: flex; align-self: center; padding: 0; border: 0; background: none; cursor: pointer; }
