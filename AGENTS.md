@@ -95,12 +95,14 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
   geometry, and one big Bioportal habitat polygon is 23.5 MB (5 s) instead of 0.4 KB (~0.3 s). The highlight is then
   drawn by the server: the same WMS layer filtered to that feature (`FEATUREID`) with a black outline-only `SLD_BODY`
   (both GeoServer vendor parameters); point layers get a black ring instead, since a line style draws nothing for points. One click handler in `map.js` picks the
-  winner: a point beats a line beats an area. Every `featureInfo` layer of a higher kind than the map-drawn (GeoJSON)
-  feature under the click is asked at once (`setClickable` registers each layer's query), and the first hit in rank
-  order, then drawing order, wins; at an equal rank the map-drawn feature wins (it's drawn above all rasters). While
+  winner: what is drawn on top. A map-drawn (GeoJSON) feature under the click wins over every raster; otherwise every
+  `featureInfo` layer is asked at once (`setClickable` registers each layer's query) and the first hit in stacking order
+  (service `stack`, then point over line over area, then drawing order) wins. While
   such a layer of areas is on, the cursor is a pointer over the whole map; lines and points alone don't get one.
-- Overlays stack by the same kind (`addOverlay`'s `kind`): points over lines over areas and plain rasters, whatever
-  order they're turned on in; rasters stay under the basemap labels, map-drawn features above them.
+- Overlays stack by service first (service-level `stack`: Digitalni ortofoto -1, others 0, Hrvatske vode 1, Bioportal
+  2, Otpad (statistike) 3), then by the same kind (`addOverlay`'s `kind`): points over lines over areas and plain
+  rasters, whatever order they're turned on in; rasters stay under the basemap labels, map-drawn features above them
+  (and win clicks over every raster).
 
 **Services behind a key** (service-level `authKey`: the URL that hands out the key)
 - DGU geoportal (`geoportal.dgu.hr/services/auth/…`, "za registrirane korisnike"; the open `services/inspire/…` ones

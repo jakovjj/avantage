@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { clearSelection, createMap, flyToCoordinates } from '#lib/map.js';
 	import { propsTable, watchDownloads } from '#lib/utils.js';
-	import Source from '#lib/Source.svelte';
+	import Source, { shownLayers } from '#lib/Source.svelte';
 	import SOURCES from '#lib/sources.js';
 
 	const KEY = 'avantage.customSources';
@@ -143,7 +143,7 @@
 	<aside class="sidebar">
 		<header>
 			<h1>Avantage</h1>
-			<button onclick={() => (resets++, filterQuery = '')}>Resetiraj</button>
+			{#if shownLayers.size}<button onclick={() => (resets++, filterQuery = '')}>Resetiraj</button>{/if}
 		</header>
 		<label class="active-toggle"><input type="checkbox" bind:checked={showActiveOnly} /> Pokaži aktivne slojeve</label>
 		<input class="layer-filter" type="search" placeholder="Filtriraj slojeve" bind:value={filterQuery} />

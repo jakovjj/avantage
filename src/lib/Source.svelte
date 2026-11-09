@@ -1,4 +1,5 @@
 <script module>
+	import { SvelteSet } from 'svelte/reactivity';
 	import { setSiteParams } from './map.js';
 	import { keepKey } from './utils.js';
 
@@ -16,6 +17,9 @@
 		if (!keys.has(keyUrl)) keys.set(keyUrl, keepKey(keyUrl, (key) => setSiteParams(new URL(keyUrl).origin, { authKey: key })));
 		return keys.get(keyUrl);
 	}
+
+	// Ids of the layers on the map, across all services (the page shows its reset button only while there are some).
+	export const shownLayers = new SvelteSet();
 </script>
 
 <script>
@@ -26,7 +30,7 @@
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, layers = {}, authKey, format, together, exclusive, opacity: slider, wfs, part, flat = false, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	let { map, url, type, title, layers = {}, authKey, format, together, exclusive, opacity: slider, wfs, stack, part, flat = false, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
 	// `flat`: the service's rows sit straight in a section of the page (`open` when it is), its one layer named `title`.
 	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
 	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
@@ -53,7 +57,7 @@
 	// When the list goes away (the full list hidden, a service removed), its layers leave the map with it; they stay
 	// stored, so they come back on when it's shown again.
 	onDestroy(() => {
-		for (const name in on) if (on[name]) hide[name]?.();
+		for (const name in on) if (on[name]) (hide[name]?.(), shownLayers.delete(`${url}#${name}`));
 	});
 
 	// Grey icon of what a layer looks like on the map (12×12 SVG content).
@@ -91,6 +95,8 @@
 		}
 	};
 	function store(id, enabled) {
+		if (enabled) shownLayers.add(id);
+		else shownLayers.delete(id);
 		try {
 			localStorage.setItem(STORED, JSON.stringify([...storedIds().filter((s) => s !== id), ...(enabled ? [id] : [])]));
 		} catch {}
@@ -219,8 +225,8 @@
 			if (!on[name]) return; // turned off while capabilities or the key were loading
 			const kind = service.layers.find((l) => l.name === name)?.kind;
 			const ids = [id, ...others.map((_, i) => `${id}+${i + 1}`)];
-			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize, format), layers[name], kind);
-			others.forEach((o, i) => addOverlay(map, ids[i + 1], rasterSource(o, o.layers[0].name, layers[name]?.tileSize, format), layers[name], kind));
+			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize, format), layers[name], kind, stack);
+			others.forEach((o, i) => addOverlay(map, ids[i + 1], rasterSource(o, o.layers[0].name, layers[name]?.tileSize, format), layers[name], kind, stack));
 			legend[name] = legendUrl(src, layer);
 			const [info, infoName, infoKind] = twin ? [twins, twin.name, twin.kind] : [service, name, kind];
 			const stopQueries = layers[name]?.featureInfo && queryOnClick(map, id, src, layer, info, infoName, infoKind === 'points');
