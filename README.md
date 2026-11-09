@@ -2,6 +2,8 @@
 
 Karta Hrvatske za istraživanje otvorenih prostornih podataka (WMS / WFS / WMTS). SvelteKit SPA, sve radi u pregledniku.
 
+Uživo: https://jakovjj.github.io/avantage/
+
 ```bash
 npm i
 npm run dev     # http://localhost:5173
