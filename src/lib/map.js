@@ -1,4 +1,4 @@
-import { MapLibreMap, MercatorCoordinate, NavigationControl, ScaleControl, setWorkerUrl } from 'maplibre-gl';
+import { MapLibreMap, MercatorCoordinate, NavigationControl, ScaleControl, addProtocol, setWorkerUrl } from 'maplibre-gl';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?url';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import maskUrl from './croatia-mask.json?url';
@@ -22,6 +22,8 @@ const COLORS = [
 ];
 const SELECTION_SOURCE = 'avantage-selection';
 const MASK_SOURCE = 'avantage-mask';
+const CROATIA_TILE = 'croatia-tile://';
+const MERCATOR_WORLD = 2 * Math.PI * 6378137;
 // Rendered features keep only numeric ids and geometry rounded to the clicked zoom's tile grid (metres off at low
 // zoom), so each feature gets a numeric id that leads a click back to the feature exactly as it was loaded.
 const shownFeatures = new Map(); // GeoJSON overlay id → Map(numeric id → loaded feature) currently on the map
@@ -51,10 +53,49 @@ let latestClick = 0;
 const siteParams = new Map();
 export const setSiteParams = (origin, params) => siteParams.set(origin, params);
 function withSiteParams(url) {
-	const u = new URL(url, location.href), params = siteParams.get(u.origin);
+	const protocol = url.startsWith(CROATIA_TILE) ? CROATIA_TILE : '';
+	const u = new URL(url.slice(protocol.length), location.href), params = siteParams.get(u.origin);
 	if (!params) return undefined;
 	for (const [name, value] of Object.entries(params)) u.searchParams.set(name, value);
-	return { url: u.href };
+	return { url: protocol + u.href };
+}
+
+function registerCroatiaTiles(mask) {
+	const boundary = new Path2D();
+	// The basemap mask is the outside polygon with holes for Croatia.
+	for (const ring of mask.coordinates.slice(1)) {
+		for (const [index, [lon, lat]] of ring.entries()) {
+			const { x, y } = MercatorCoordinate.fromLngLat([lon, lat]);
+			const point = [(x - 0.5) * MERCATOR_WORLD, (0.5 - y) * MERCATOR_WORLD];
+			if (index === 0) boundary.moveTo(...point);
+			else boundary.lineTo(...point);
+		}
+		boundary.closePath();
+	}
+	addProtocol('croatia-tile', async ({ url }, { signal }) => {
+		const tileUrl = url.slice(CROATIA_TILE.length);
+		const [west, south, east, north] = new URL(tileUrl).searchParams.get('BBOX').split(',').map(Number);
+		const response = await fetch(tileUrl, { signal });
+		if (!response.ok) throw new Error(`WMS tile: HTTP ${response.status}`);
+		const image = await createImageBitmap(await response.blob());
+		try {
+			signal.throwIfAborted();
+			const canvas = new OffscreenCanvas(image.width, image.height);
+			const ctx = canvas.getContext('2d');
+			const xScale = image.width / (east - west), yScale = image.height / (north - south);
+			ctx.setTransform(xScale, 0, 0, -yScale, -west * xScale, north * yScale);
+			ctx.clip(boundary);
+			ctx.resetTransform();
+			ctx.drawImage(image, 0, 0);
+			return {
+				data: canvas.transferToImageBitmap(),
+				cacheControl: response.headers.get('Cache-Control'),
+				expires: response.headers.get('Expires')
+			};
+		} finally {
+			image.close();
+		}
+	});
 }
 
 const isGeom = (t) => ['in', ['geometry-type'], ['literal', [t, `Multi${t}`]]];
@@ -121,6 +162,7 @@ export async function createMap (container, onFeatureSelect = () => {}, onLoadin
 	const [style, mask] = await Promise.all(
 		['https://tiles.openfreemap.org/styles/positron', maskUrl].map((url) => track(fetch(url).then((r) => r.json())))
 	);
+	registerCroatiaTiles(mask);
 	const map = new MapLibreMap({
 		container,
 		style: croatiaStyle(style, mask),
@@ -236,10 +278,10 @@ export function clearSelection(map) {
 
 /** Web Mercator box (metres) of `size` px centred on a clicked point, as a WMS GetFeatureInfo needs it. */
 export function clickBox(map, point, size = 9) {
-	const half = (size - 1) / 2, world = 2 * Math.PI * 6378137;
+	const half = (size - 1) / 2;
 	const metres = (x, y) => {
 		const c = MercatorCoordinate.fromLngLat(map.unproject([x, y]));
-		return [(c.x - 0.5) * world, (0.5 - c.y) * world];
+		return [(c.x - 0.5) * MERCATOR_WORLD, (0.5 - c.y) * MERCATOR_WORLD];
 	};
 	const [w, n] = metres(point.x - half, point.y - half), [e, s] = metres(point.x + half + 1, point.y + half + 1);
 	return { bbox: [w, s, e, n], size, i: half, j: half };
@@ -257,6 +299,7 @@ export const RASTER_OPACITY = 0.8;
 
 /** Adds a raster or GeoJSON source of geometry `kind` with optional per-layer display tweaks. */
 export function addOverlay (map, id, source, layer = {}, kind) {
+	if (layer.clipToCroatia) source = { ...source, tiles: source.tiles.map((tile) => CROATIA_TILE + tile) };
 	// A saved image of the whole layer stands in for the server's tiles while zoomed out, where they are slow. The
 	// tiles' source then starts later rather than their layer, so it stays in use and keeps crediting the data
 	// provider (image sources can't carry an attribution). MapLibre picks raster tiles by the rounded map zoom, and
