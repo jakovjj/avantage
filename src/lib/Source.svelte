@@ -29,7 +29,7 @@
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, section, layers = {}, authKey, format, together, exclusive, opacity: slider, wfs, stack, part, flat = false, open = false, onremove, reset = 0, filterQuery = '' } = $props();
+	let { map, url, type, title, section, layers = {}, authKey, format, together, exclusive, opacity: slider, wfs, stack, part, flat = false, open = false, reset = 0, filterQuery = '' } = $props();
 	// `flat`: the service's rows sit straight in a section of the page (`open` when it is), its one layer named `title`.
 	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
 	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
@@ -268,7 +268,6 @@
 <details bind:open={rootOpen}>
 	<summary>
 		<span class:active>{title ?? service?.info.title ?? url}</span>
-		{#if onremove}<button onclick={(e) => (e.preventDefault(), onremove())} title="Ukloni">✕</button>{/if}
 	</summary>
 	{@render body()}
 </details>
@@ -353,7 +352,6 @@
 
 <style>
 	summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
-	summary button { float: right; }
 	summary span { padding: 2px 4px; }
 	summary span.active { background: #e8eef5; }
 	details.group.active > summary span { background: #eaf2e8; }

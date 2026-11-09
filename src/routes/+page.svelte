@@ -6,15 +6,11 @@
 	import Source, { closeLayerInfo } from '#lib/Source.svelte';
 	import SOURCES from '#lib/sources.js';
 
-	const KEY = 'avantage.customSources';
 	const ORDER_KEY = 'avantage.layerOrder';
 
 	let container, map = $state();
 	let selectedFeature = $state(null);
 	let shareCopied = $state(false);
-	let custom = $state(loadCustom());
-	let url = $state('');
-	let showAddForm = $state(false);
 	let showAll = $state(false); // every layer of every service, not only the designed ones
 	// Services sharing a `section` (one survey each, e.g. Digitalni ortofoto) are listed together, one row per service, at
 	// the top of the sidebar.
@@ -25,10 +21,8 @@
 	let layerOrder = $state(loadLayerOrder());
 	let draggedLayer = $state(null), dropTarget = $state(null);
 	const activeRows = $derived.by(() => {
-		// A custom service can also occur in the built-in catalogue.
-		const rows = [...activeLayers.values()].flat();
 		const positions = new Map(layerOrder.map((id, index) => [id, index]));
-		return [...new Map(rows.map((entry) => [entry.id, entry])).values()].sort((a, b) =>
+		return [...activeLayers.values()].flat().sort((a, b) =>
 			(positions.get(a.id) ?? Infinity) - (positions.get(b.id) ?? Infinity) || b.rank - a.rank);
 	});
 	$effect(() => {
@@ -222,22 +216,6 @@
 		setTimeout(() => (shareCopied = false), 2000);
 	}
 
-	// Custom services are a per-user convenience; storage may be unavailable.
-	function loadCustom() {
-		try {
-			const stored = JSON.parse(localStorage.getItem(KEY) ?? '[]');
-			return Array.isArray(stored) ? stored : [];
-		} catch {
-			return [];
-		}
-	}
-
-	function saveCustom() {
-		try {
-			localStorage.setItem(KEY, JSON.stringify(custom));
-		} catch {}
-	}
-
 	onMount(() => {
 		const ready = createMap(container, selectFeature, (busy) => (drawing = busy)).then((m) => {
 			zoom = m.getZoom();
@@ -251,18 +229,6 @@
 			ready.then((m) => m.remove());
 		};
 	});
-
-	function add(e) {
-		e.preventDefault();
-		custom.push({ url, open: true });
-		url = '';
-		saveCustom();
-	}
-
-	function remove(source) {
-		custom = custom.filter((s) => s !== source);
-		saveCustom();
-	}
 </script>
 
 <svelte:head><title>IKOP - Interaktivna karta okolišnih podataka</title></svelte:head>
@@ -291,20 +257,12 @@
 				{#each SOURCES.filter((s) => s.category) as source}<Source {map} {...source} title={source.category} part="ready" reset={resets} {filterQuery} />{/each}
 				{#if showAll}
 					<hr />
-					<p class="raw-note">Niže navedeni slojevi prikazivat će se na karti bez obrade.</p>
+					<p class="raw-note">Niže navedeni slojevi prikazivat će se na karti u sirovom obliku.</p>
 					{#each SOURCES.filter((s) => !s.section) as source}<Source {map} {...source} part="rest" reset={resets} {filterQuery} />{/each}
 				{/if}
-				{#each custom as source (source)}<Source {map} {...source} reset={resets} {filterQuery} onremove={() => remove(source)} />{/each}
 			{/if}
 			<div class="manual-options">
 				<label class="manual-toggle"><input type="checkbox" bind:checked={showAll} /> Prikaži sve slojeve</label>
-				<label class="manual-toggle"><input type="checkbox" bind:checked={showAddForm} /> Dodaj ručno slojeve</label>
-				{#if showAddForm}
-					<form onsubmit={add}>
-						<input type="url" bind:value={url} placeholder="WMS / WFS / WMTS URL" required />
-						<button>Dodaj</button>
-					</form>
-				{/if}
 			</div>
 		</div>
 		<div class="active-layers" hidden={!showActiveOnly} onchange={focusAfterRemoval}>
@@ -374,10 +332,11 @@
 			</div>
 			{#if googleMapsUrl(feature)}
 				<div class="maps">
-					<a href={googleMapsUrl(feature)} target="_blank" rel="noopener noreferrer" aria-label="Otvori u Google Maps">
-						<img src="google-maps.svg" alt="Google Maps" />
+					<a href={googleMapsUrl(feature)} target="_blank" rel="noopener noreferrer">
+						<img src="google-maps.png" alt="" />Otvori u Google Mapsu
+						<svg class="external" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.3"><title>otvara se u novoj kartici</title><path d="M5 2H2v8h8V7M7 2h3v3M10 2L5.5 6.5" /></svg>
 					</a>
-					<button class:copied={shareCopied} type="button" onclick={() => shareGoogleMapsUrl(googleMapsUrl(feature))}>{shareCopied ? 'Kopirano' : 'Podijeli'}</button>
+					<button type="button" onclick={() => shareGoogleMapsUrl(googleMapsUrl(feature))}>{shareCopied ? 'Kopirano' : 'Podijeli'}</button>
 				</div>
 			{/if}
 		</aside>
@@ -417,10 +376,10 @@
 	/* The content fills the panel, so the link sits at its bottom; when the panel scrolls, the link sticks there. */
 	.details > div { flex: 1 0 auto; padding-bottom: 12px; }
 	.maps { position: sticky; bottom: 0; display: flex; justify-content: center; align-items: center; gap: 12px; padding: 10px 0; background: #fff; }
-	.maps img { display: block; width: 44px; height: 44px; }
-	.maps button { padding: 8px 16px; border: 1px solid #222; border-radius: 8px; background: #fff; color: #222; font: inherit; cursor: pointer; transition: background-color 180ms ease, box-shadow 180ms ease; }
-	.maps button:hover { box-shadow: 0 2px 7px #0003; }
-	.maps button.copied { background: #eaf4ff; }
+	/* Both look like links: Google Maps with its pin, "Podijeli" as plain text. */
+	.maps a, .maps button { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; background: none; color: LinkText; font: inherit; text-decoration: underline; cursor: pointer; }
+	.maps img { width: 20px; height: 20px; }
+	.maps .external { width: 11px; height: 11px; }
 	header { display: flex; justify-content: space-between; align-items: center; }
 	h1 { font-size: 20px; }
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
