@@ -44,6 +44,8 @@ const AMOUNT = ['coalesce', ['get', 'ukupna_kolicina_otpada'], ''];
 const KG = ['to-number', ['slice', AMOUNT, 0, ['max', 0, ['index-of', ' kg', AMOUNT]]], 0];
 const ODBACENI_OTPAD = {
 	ready: true,
+	share: 'Pogledaj ovaj otpad!',
+	shareCode: 'oo', // shared links: /?oo13880 opens odbaceni_otpad.13880
 	panel: OdbaceniOtpad,
 	loadAll: true, // 14,195 points: 10 MB of JSON, 1.35 MB downloaded (gzip), ~1.5 s; then never refetched
 	paint: {
@@ -95,7 +97,7 @@ const BIOPORTAL_WMS = 'https://services.bioportal.hr/wms';
 // Bioportal renders them slowly when zoomed out (a 512 px tile of Croatia takes ~7 s, a 256 px one ~1.2 s;
 // all of Croatia 6.8 s vs 4.4 s), so they use 256 px tiles.
 // They cover all of Croatia, so they share one sidebar section and only one is shown at a time.
-const HEATMAP = { ready: true, opacity: true, wms: BIOPORTAL_WMS, heatmap: true, tileSize: 256, group: 'Osjetljivost', exclusive: 'osjetljivost' };
+const HEATMAP = { ready: true, opacity: true, stack: 2, wms: BIOPORTAL_WMS, heatmap: true, tileSize: 256, group: 'Osjetljivost', exclusive: 'osjetljivost' };
 // The slow ones (all of Croatia at zoom 7 in 256 px tiles: prirode 4.5 s, staništa 3.6 s, šišmiši 2.5 s, skupno
 // 1.9–2.5 s; ptice 1.6 s and velike zvijeri 0.5 s stay live) show a saved image of all of Croatia until zoom 8.5 (zoom 8
 // sharpness, 8–25 s for the server to render) instead of the tiles. See Snapshots in DEVELOPMENT.md.
@@ -243,7 +245,7 @@ export default [
 	{
 		title: 'Bioportal',
 		category: 'Bioportal',
-		stack: 2,
+		stack: 1, // habitats; the sensitivity maps (HEATMAP) have 2
 		type: 'WFS',
 		url: 'https://services.bioportal.hr/wfs',
 		layers: {
@@ -299,7 +301,7 @@ export default [
 	{
 		title: 'Opasnost od poplava (Hrvatske vode)',
 		category: 'Hrvatske vode',
-		stack: 1,
+		stack: 4,
 		type: 'WMS',
 		url: 'https://servisi.voda.hr/poplave_opasnosti/wms',
 		layers: {
