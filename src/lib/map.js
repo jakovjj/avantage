@@ -125,6 +125,9 @@ export async function createMap (container, onFeatureSelect = () => {}, onLoadin
 		style: croatiaStyle(style, mask),
 		bounds: [[13.2, 42.2], [19.7, 46.7]],
 		maxBounds: MAX_BOUNDS, // all data is Croatian: keep the view close to it
+		// Each layer keeps tiles of this many zooms' worth of screens (default 5: ~30 tiles), so zooming in from Croatia to a
+		// street and back out still has the zoomed-out tiles; DGU tiles can't be cached by the browser and take ~1 s each.
+		maxTileCacheZoomLevels: 12,
 		transformRequest: withSiteParams
 	});
 	map.addControl(new NavigationControl({ showCompass: false }), 'bottom-right'); // top-right holds the debug readout

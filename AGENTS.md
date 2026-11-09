@@ -79,6 +79,9 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 - Rendered as 512 px raster tiles (`WMS_TILE`; servers render each tile on request, so fewer bigger tiles load
   faster) in EPSG:3857 using the `{bbox-epsg-3857}` template; the browser and MapLibre cache tiles, so don't replace
   tiles with a single per-view image. Rasters sit under the basemap labels at 0.8 opacity.
+- MapLibre keeps each layer's tiles of `maxTileCacheZoomLevels` (12, in `createMap`) zooms' worth of screens (~72 tiles;
+  the default 5 held ~30, so zooming in from Croatia to a street dropped the zoomed-out tiles and zooming back out showed
+  empty map while they reloaded). DGU tiles send `no-store` and carry a changing key, so only this cache can keep them.
 - Not every server is faster with 512 px: measure. Bioportal's sensitivity maps take ~7 s per 512 px tile of
   Croatia but ~1.2 s per 256 px one, so they use `tileSize: 256` (all of Croatia 6.8 s → 4.4 s).
 - `wmsZooms` turns the layer's `Min/MaxScaleDenominator` into the source's `minzoom`/`maxzoom`, so MapLibre skips
@@ -346,6 +349,10 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   still reload after edits elsewhere before trusting what you see.
 - `vite.config.js` marks `ol/*` external because ogc-client lazily imports OpenLayers; never call
   `getOpenLayersTileGrid` and don't add `ol`.
+- ogc-client keeps capabilities in the browser's Cache Storage ("ogc-client", 1 h) and deletes expired entries before
+  every read; with several services loading at once two deletions collide ("Cannot read properties of undefined (reading
+  'headers')", 7 of 10 orthophotos). `ogc.js` empties that store once per page load before any read and makes entries
+  last a year, so nothing expires mid-session; capabilities answer in ~0.1 s, so its cross-reload cache isn't missed.
 - `WmtsEndpoint` has no `getCapabilitiesUrl()`; `inspect` stores `capabilitiesUrl` for all types.
 - Don't pass a format hint to ogc-client's WMTS `getLayerResourceLink`/`getTileUrl` (it crashes when the format is
   missing).
