@@ -201,7 +201,7 @@ const ORTHOPHOTOS = [
 	['orthophoto_1000', '1:1000 potres Zagreb'],
 	['orthophoto_500', '1:500 potres Sisačko-moslavačka županija']
 ].map(([name, title, whole, together]) => ({
-	title, section: 'Digitalni ortofoto (podloga)', type: 'WMS', url: DGU_WMS(name), authKey: DGU_KEY, exclusive: 'ortofoto', opacity: true,
+	title, section: 'Digitalni ortofoto (podloga)', stack: -1, type: 'WMS', url: DGU_WMS(name), authKey: DGU_KEY, exclusive: 'ortofoto', opacity: true,
 	...(whole && { format: 'image/jpeg' }), ...(together && { together: together.map(DGU_WMS) })
 }));
 
@@ -234,6 +234,7 @@ export default [
 	{
 		title: 'Otpad (AZO)',
 		category: 'Otpad (statistike)',
+		stack: 3,
 		type: 'WMS',
 		url: 'https://servisi.azo.hr/otpad/wms?request=GetCapabilities',
 		wfs: 'https://servisi.azo.hr/otpad/wfs',
@@ -242,6 +243,7 @@ export default [
 	{
 		title: 'Bioportal',
 		category: 'Bioportal',
+		stack: 2,
 		type: 'WFS',
 		url: 'https://services.bioportal.hr/wfs',
 		layers: {
@@ -297,6 +299,7 @@ export default [
 	{
 		title: 'Opasnost od poplava (Hrvatske vode)',
 		category: 'Hrvatske vode',
+		stack: 1,
 		type: 'WMS',
 		url: 'https://servisi.voda.hr/poplave_opasnosti/wms',
 		layers: {

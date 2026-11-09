@@ -38,7 +38,9 @@ let onSelect = () => {}; // createMap's onFeatureSelect
 // and points cover too little of it to deserve one everywhere).
 const clickableRasters = new Map();
 export const setClickable = (id, query) => (query ? clickableRasters.set(id, query) : clickableRasters.delete(id));
-// Overlays stack by geometry kind, points over lines over areas (and other rasters), and a click picks in that order.
+// Overlays stack by service (`stack`: orthophotos at the bottom, then flood maps, habitats, waste statistics), within
+// one by geometry kind, points over lines over areas (and other rasters); map-drawn (GeoJSON) layers lie above every
+// raster. A click picks in that same order.
 const KIND_RANKS = { lines: 1, points: 2 };
 const overlayRanks = new Map(); // overlay id → rank of its kind
 const rankOf = (source) => overlayRanks.get(source?.replace(/:overview$/, ''));
@@ -255,7 +257,7 @@ export function viewBbox (map, scale = 1) {
 export const RASTER_OPACITY = 0.8;
 
 /** Adds a raster or GeoJSON source of geometry `kind` with optional per-layer display tweaks. */
-export function addOverlay (map, id, source, layer = {}, kind) {
+export function addOverlay (map, id, source, layer = {}, kind, stack = 0) {
 	// A saved image of the whole layer stands in for the server's tiles while zoomed out, where they are slow. The
 	// tiles' source then starts later rather than their layer, so it stays in use and keeps crediting the data
 	// provider (image sources can't carry an attribution). MapLibre picks raster tiles by the rounded map zoom, and
@@ -265,7 +267,7 @@ export function addOverlay (map, id, source, layer = {}, kind) {
 	const tilesFrom = overview && overview.maxZoom + 1 + Math.log2(512 / (source.tileSize ?? 512));
 	map.addSource(id, overview ? { ...source, minzoom: Math.max(source.minzoom ?? 0, tilesFrom) } : source);
 	overlayLayers.set(id, layer);
-	const rank = KIND_RANKS[kind] ?? 0;
+	const rank = (source.type === 'raster' ? stack * 10 : 1000) + (KIND_RANKS[kind] ?? 0);
 	overlayRanks.set(id, rank);
 	// Rasters cover the whole view, so they go under the basemap labels and stay a bit see-through; map-drawn features
 	// go above the labels. Either way, under the first overlay of a higher kind.
