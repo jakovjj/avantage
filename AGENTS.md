@@ -151,7 +151,8 @@ The sidebar lists only these on top, marked `ready`, under three categories name
 **Otpad** (AZO WFS), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
 **Hrvatske vode** (all 4 flood maps, the user's choice). Every other layer shows in its service's section only when
 "Prikaži sve slojeve" is ticked (a developer option at the bottom, next to "Dodaj ručno slojeve"); a service whose
-layers are all on top is left out there. A thin grey rule and the user's note "Niže navedeni slojevi prikazivat će se
+layers are all on top is left out there. Hiding the list takes its layers off the map (each `Source` removes its
+layers when it goes away) but keeps them stored, so they come back with it. A thin grey rule and the user's note "Niže navedeni slojevi prikazivat će se
 na karti bez obrade." separate them from the ready layers (the one sentence allowed in the sidebar).
 
 - **Lokacije odbačenog otpada** (AZO) — WFS only (`otpad:odbaceni_otpad`; the WMS layer is hidden), `loadAll`
