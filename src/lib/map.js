@@ -34,13 +34,15 @@ let colorIndexes;
 let activeSelection; // { sourceId }
 let onSelect = () => {}; // createMap's onFeatureSelect
 // Raster overlays that answer clicks anywhere (WMS GetFeatureInfo): overlay id → query(point) resolving to
-// { feature, outline } or nothing. While one is on, the whole map shows a pointer.
+// { feature, outline } or nothing. While an area layer among them is on, the whole map shows a pointer (thin lines
+// and points cover too little of it to deserve one everywhere).
 const clickableRasters = new Map();
 export const setClickable = (id, query) => (query ? clickableRasters.set(id, query) : clickableRasters.delete(id));
 // Overlays stack by geometry kind, points over lines over areas (and other rasters), and a click picks in that order.
 const KIND_RANKS = { lines: 1, points: 2 };
 const overlayRanks = new Map(); // overlay id → rank of its kind
 const rankOf = (source) => overlayRanks.get(source?.replace(/:overview$/, ''));
+const clickableAreas = () => [...clickableRasters.keys()].some((id) => !rankOf(id));
 let latestClick = 0;
 
 const isGeom = (t) => ['in', ['geometry-type'], ['literal', [t, `Multi${t}`]]];
@@ -69,6 +71,10 @@ const overlayFeature = (map, point) =>
 	);
 
 const MAX_BOUNDS = [[11.5, 41.2], [21.4, 47.7]];
+// The basemap's credit (its TileJSON's) in Croatian; a style source's own attribution overrides the TileJSON one.
+const BASEMAP_CREDIT = '<a href="https://openfreemap.org" target="_blank">OpenFreeMap</a> ' +
+	'<a href="https://www.openmaptiles.org/" target="_blank">&copy; OpenMapTiles</a> ' +
+	'Podaci iz <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMapa</a>';
 
 /**
  * Basemap focused on Croatia (OSM boundary, the basemap's own source), applied before the first frame: no tiles
@@ -79,7 +85,7 @@ function croatiaStyle(style, mask) {
 	// The label filter tests every label against every border point (13,846), which made drawing tiles ~3× slower;
 	// ~500 m accuracy (900 points) costs nothing noticeable. The mask itself keeps the full border.
 	const croatia = { type: 'MultiPolygon', coordinates: mask.coordinates.slice(1).map((ring) => [simplify(ring, 0.005)]) };
-	for (const source of Object.values(style.sources)) if (source.type === 'vector') source.bounds = MAX_BOUNDS.flat();
+	for (const source of Object.values(style.sources)) if (source.type === 'vector') Object.assign(source, { bounds: MAX_BOUNDS.flat(), attribution: BASEMAP_CREDIT });
 	style.sources[MASK_SOURCE] = { type: 'geojson', data: mask };
 	nonInteractive.add(MASK_SOURCE);
 	const labels = style.layers.filter((l) => l.type === 'symbol');
@@ -134,7 +140,7 @@ export async function createMap (container, onFeatureSelect = () => {}, onLoadin
 		activeSelection = { sourceId: rendered.source };
 		onSelect(f, rendered.source, overlayLayers.get(rendered.source));
 	});
-	map.on('mousemove', (e) => (map.getCanvas().style.cursor = clickableRasters.size || overlayFeature(map, e.point) ? 'pointer' : ''));
+	map.on('mousemove', (e) => (map.getCanvas().style.cursor = clickableAreas() || overlayFeature(map, e.point) ? 'pointer' : ''));
 	map.on('dataloading', (e) => e.sourceId && map.getSource(e.sourceId)?.type === 'raster' && onLoading(true));
 	map.on('idle', () => onLoading(false));
 	return new Promise((resolve) => map.once('load', () => resolve(map)));
