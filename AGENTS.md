@@ -178,9 +178,9 @@ only. Their config sits in the "Ready layers" block at the top of `sources.js`. 
 asks; every other layer keeps the automatic defaults. Add a layer here when the user says its design is done.
 
 The sidebar lists only these on top, marked `ready`, under four categories named by their service's `category`:
-**Otpad** (AZO WFS), **Otpad (dev)** (AZO WMS: the 39 layers whose records count amounts of waste, 2014–2023, picked by reading a
+**Otpad** (AZO WFS), **Otpad (dev)** (AZO WMS: the 18 layers whose records count amounts of waste, 2014–2023, picked by reading a
 record of each of the 98: tonnes, kg per person, a facility's yearly tonnage, recovery / recycling / separation rates;
-counties, municipalities and facilities; clickable, plain properties table, one list, one at a time), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
+counties and municipalities only, by the user's pick; clickable, plain properties table, one list, one at a time), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
 **Hrvatske vode** (all 4 flood maps, the user's choice). Every other layer shows in its service's section only when
 "Prikaži sve slojeve" is ticked (a developer option at the bottom, next to "Dodaj ručno slojeve"); a service whose
 layers are all on top is left out there. **Digitalni ortofoto (podloga)** (DGU, 10 rows: 2011, 2014–2016, the two-year composites 2017/2018 to 2023/2024,
