@@ -18,14 +18,6 @@ export function showWfs(map, id, service, name, layer = {}, onNote) {
 	addOverlay(map, id, { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, attribution: attribution(service) }, layer, kind);
 	const show = (features) => syncFeatures(map, id, layer.id ? features.map((f) => ({ ...f, id: layer.id(f) })) : features);
 	let request, covered, started = false, isBig = false; // covered: area of the last complete response
-	// The layer and those it `merge`s, each whole (or null when one is too big). A feature in several of them counts
-	// once, by its `id`: the layer's own copy, listed last, wins.
-	const loadWhole = async (signal) => {
-		const parts = await Promise.all([...(layer.merge ?? []), name].map((n) =>
-			getFeatures(service, n, { maxBytes: layer.loadAll ? Infinity : SMALL_BYTES, signal })));
-		if (parts.includes(null)) return null;
-		return [...new Map(parts.flat().map((f) => [layer.id ? layer.id(f) : f.id, f])).values()];
-	};
 	const zoomAllowed = () => !Number.isFinite(layer.minZoom) || map.getZoom() >= layer.minZoom;
 
 	const run = async (task) => {
@@ -63,7 +55,7 @@ export function showWfs(map, id, service, name, layer = {}, onNote) {
 			if (!wholeLayers.has(id))
 				wholeLayers.set(id, layer.snapshot
 					? JSON.parse(await fetchText(layer.snapshot, { signal })).features
-					: await loadWhole(signal));
+					: await getFeatures(service, name, { maxBytes: layer.loadAll ? Infinity : SMALL_BYTES, signal }));
 			if (!zoomAllowed()) {
 				started = false;
 				return 'približi kartu';

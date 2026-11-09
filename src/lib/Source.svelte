@@ -26,7 +26,7 @@
 	import { showWfs } from './wfs.js';
 	import { queryOnClick } from './wms.js';
 
-	let { map, url, type, title, layers = {}, authKey, format, together, exclusive, opacity: slider, part, flat = false, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
+	let { map, url, type, title, layers = {}, authKey, format, together, exclusive, opacity: slider, wfs, part, flat = false, open = false, onremove, reset = 0, showActiveOnly = false, filterQuery = '' } = $props();
 	// `flat`: the service's rows sit straight in a section of the page (`open` when it is), its one layer named `title`.
 	// `part`: 'ready' lists only the layers marked `ready`, 'rest' only the others, none all of them.
 	const inPart = (name) => !part || (part === 'ready') === Boolean(layers[name]?.ready);
@@ -120,7 +120,7 @@
 	// dash without the trailing space ("2017 -Građevni otpad") or as an en dash.
 	const naturalOrder = new Intl.Collator('hr', { numeric: true, sensitivity: 'base' });
 	const titlePrefix = (title) => title.match(/^(.+?)\s+[-–—]\s*/)?.[1] ?? null;
-	const layerGroup = (l) => layers[l.name]?.group || l.title.match(/^(.+?)\s+\d{4}\s*[-–—]\s*\d{4}$/)?.[1] || titlePrefix(l.title) || l.title.match(/^(.+?)\s+\d{4}$/)?.[1] || l.title.match(/^(MTB)\s+\d+$/i)?.[1] || null;
+	const layerGroup = (l) => layers[l.name]?.group === false ? null : layers[l.name]?.group || l.title.match(/^(.+?)\s+\d{4}\s*[-–—]\s*\d{4}$/)?.[1] || titlePrefix(l.title) || l.title.match(/^(.+?)\s+\d{4}$/)?.[1] || l.title.match(/^(MTB)\s+\d+$/i)?.[1] || null;
 	const itemLabel = (l, group) => {
 		if (layers[l.name]?.label) return layers[l.name].label;
 		if (l.title.startsWith(`${group} `)) return l.title.slice(group.length).trim();
@@ -212,14 +212,18 @@
 			const [src, layer] = layers[name]?.wms ? await wmsSource(name) : [service, name];
 			// `together`: other WMS services whose first layer is drawn with this one, as one row (each covers another part).
 			const others = await Promise.all((together ?? []).map((u) => inspect(u, 'WMS')));
+			// A WMS service's `wfs` publishes the same layers as WFS: their attributes keep geometry out of GetFeatureInfo.
+			const twins = layers[name]?.featureInfo && wfs && (await inspect(wfs, 'WFS'));
+			const twin = twins?.layers.find((l) => l.name.split(':').pop() === name);
 			if (authKey) await useKey(authKey);
-			if (!on[name]) return; // turned off while the WMS capabilities or the key were loading
+			if (!on[name]) return; // turned off while capabilities or the key were loading
 			const kind = service.layers.find((l) => l.name === name)?.kind;
 			const ids = [id, ...others.map((_, i) => `${id}+${i + 1}`)];
 			addOverlay(map, id, rasterSource(src, layer, layers[name]?.tileSize, format), layers[name], kind);
 			others.forEach((o, i) => addOverlay(map, ids[i + 1], rasterSource(o, o.layers[0].name, layers[name]?.tileSize, format), layers[name], kind));
 			legend[name] = legendUrl(src, layer);
-			const stopQueries = layers[name]?.featureInfo && queryOnClick(map, id, src, layer, service, name, kind === 'points');
+			const [info, infoName, infoKind] = twin ? [twins, twin.name, twin.kind] : [service, name, kind];
+			const stopQueries = layers[name]?.featureInfo && queryOnClick(map, id, src, layer, info, infoName, infoKind === 'points');
 			hide[name] = () => (stopQueries?.(), ids.forEach((o) => removeOverlay(map, o)));
 		} catch (e) {
 			note[name] = e.message;
