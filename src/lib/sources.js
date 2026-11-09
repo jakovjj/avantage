@@ -149,10 +149,24 @@ const asOneRow = (series, panel, label) => {
 // Divlji deponiji otpada u speleološkim objektima: the register as of 2021 (763 caves) and 2024 (825), merged into one
 // layer (89 KB gzipped together). Each cave has one page on cistopodzemlje.info, the only reliable key (the cadastre
 // number is often "-"): 727 caves are in both (the 2024 record wins), 98 only in 2024, 36 only in 2021.
+// Names from zoom 12, without their "(sinonimi: …)".
+const CAVE = ['get', 'ime_obj'];
 const CAVE_DUMPS = {
 	ready: true, label: 'Divlji deponiji otpada u speleološkim objektima', panel: SpeleoDeponij, loadAll: true,
 	merge: ['dzzpnpis:divlji_deponiji_2021'], id: (f) => String(f.properties.link ?? f.properties.povez).replace(/^https?:\/\//, ''),
-	paint: { circle: { 'circle-color': '#8c510a', 'circle-radius': 5, 'circle-stroke-width': 1 } }
+	paint: { circle: { 'circle-color': '#8c510a', 'circle-radius': 5, 'circle-stroke-width': 1 } },
+	symbol: {
+		layout: {
+			'text-field': ['step', ['zoom'], '', 12,
+				['case', ['>', ['index-of', ' (', CAVE], 0], ['slice', CAVE, 0, ['index-of', ' (', CAVE]], CAVE]],
+			'text-font': ['Noto Sans Bold'],
+			'text-size': 11,
+			'text-variable-anchor': ['left'],
+			'text-radial-offset': 0.7,
+			'text-max-width': 10
+		},
+		paint: { 'text-color': 'rgba(0, 0, 0, 0.8)', 'text-halo-color': 'rgba(255, 255, 255, 0.7)', 'text-halo-width': 1.5 }
+	}
 };
 
 // Both habitat maps share one sidebar section ("2004 - …", "2016 - …"), and only one of their land polygon layers can be
