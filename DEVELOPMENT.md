@@ -382,7 +382,7 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
 - `npm run build` must pass without errors.
 - Run the dev server (`npm run dev`) and check the change in a browser: layers toggle, no console errors, network requests look as intended.
 - Docker build (`docker compose up --build`) should keep working; it serves `build/` via `nginx.conf`.
-- Every push to `main` deploys `build/` to GitHub Pages (`.github/workflows/pages.yml`) under `/avantage/`, so
+- Every push to `main` deploys `build/` to GitHub Pages (`.github/workflows/pages.yml`) under `/ikop/`, so
   paths must stay relative: no root-relative URLs like `/favicon.svg`.
 
 ## Git

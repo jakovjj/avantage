@@ -1,8 +1,8 @@
 services:
-  avantage:
+  ikop:
     build: .
-    image: avantage:latest
-    container_name: avantage
+    image: ikop:latest
+    container_name: ikop
     ports:
       - "8080:80"
     restart: unless-stopped

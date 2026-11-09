@@ -1,8 +1,8 @@
-# Avantage
+# IKOP - Interaktivna karta okolišnih podataka
 
 Karta Hrvatske za istraživanje otvorenih prostornih podataka (WMS / WFS / WMTS). SvelteKit SPA, sve radi u pregledniku.
 
-Uživo: https://jakovjj.github.io/avantage/
+Uživo: https://jakovjj.github.io/ikop/
 
 ```bash
 npm i
@@ -24,13 +24,13 @@ docker compose up --build
 Ili ručno, bez Compose-a:
 
 ```bash
-docker build -t avantage .
-docker run --rm -p 8080:80 avantage
+docker build -t ikop .
+docker run --rm -p 8080:80 ikop
 ```
 
 - Build je višefazni: **Node** (alpine) gradi statičnu stranicu, a **nginx** (alpine) ju poslužuje.
 - `nginx.conf` uključuje gzip, trajno keširanje Vite-ovih hashiranih datoteka i SPA fallback.
-- Zaustavljanje: `docker compose down`. Drugi port: `docker run --rm -p 3000:80 avantage`.
+- Zaustavljanje: `docker compose down`. Drugi port: `docker run --rm -p 3000:80 ikop`.
 
 ## Struktura
 
