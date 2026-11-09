@@ -13,6 +13,10 @@
 	let url = $state('');
 	let showAddForm = $state(false);
 	let showAll = $state(false); // every layer of every service, not only the designed ones
+	// Services sharing a `section` (one survey each, e.g. Digitalni ortofoto) are listed together, one row per service, at
+	// the top of the sidebar.
+	const SECTIONS = Object.entries(Object.groupBy(SOURCES.filter((s) => s.section), (s) => s.section));
+	let sectionOpen = $state({});
 	let showActiveOnly = $state(false);
 	let filterQuery = $state('');
 	let resets = $state(0); // bumped by the reset button, see Source.svelte
@@ -144,11 +148,17 @@
 		<label class="active-toggle"><input type="checkbox" bind:checked={showActiveOnly} /> Pokaži aktivne slojeve</label>
 		<input class="layer-filter" type="search" placeholder="Filtriraj slojeve" bind:value={filterQuery} />
 		{#if map}
+			{#each SECTIONS as [name, services] (name)}
+				<details class="section" bind:open={sectionOpen[name]}>
+					<summary><span>{name}</span></summary>
+					{#each services as source}<Source {map} {...source} flat open={sectionOpen[name]} reset={resets} {showActiveOnly} {filterQuery} />{/each}
+				</details>
+			{/each}
 			{#each SOURCES.filter((s) => s.category) as source}<Source {map} {...source} title={source.category} part="ready" reset={resets} {showActiveOnly} {filterQuery} />{/each}
 			{#if showAll}
 				<hr />
 				<p class="raw-note">Niže navedeni slojevi prikazivat će se na karti bez obrade.</p>
-				{#each SOURCES as source}<Source {map} {...source} part="rest" reset={resets} {showActiveOnly} {filterQuery} />{/each}
+				{#each SOURCES.filter((s) => !s.section) as source}<Source {map} {...source} part="rest" reset={resets} {showActiveOnly} {filterQuery} />{/each}
 			{/if}
 			{#each custom as source (source)}<Source {map} {...source} reset={resets} {showActiveOnly} {filterQuery} onremove={() => remove(source)} />{/each}
 		{/if}
@@ -222,6 +232,8 @@
 	form { display: flex; gap: 6px; margin-bottom: 12px; }
 	input { flex: 1; min-width: 0; }
 	hr { width: 100%; margin: 10px 0 6px; border: 0; border-top: 1px solid #ccc; }
+	.section > summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+	.section > summary span { padding: 2px 4px; } /* like a service's title (Source.svelte) */
 	.raw-note { margin: 0 0 6px; color: #666; font-size: 12px; }
 	.layer-filter { flex: none; height: 1.5em; margin: 0 0 6px; padding-block: 0; }
 	.manual-toggle { display: flex; align-items: center; gap: 6px; margin: 12px 0; }

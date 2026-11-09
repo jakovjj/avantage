@@ -84,7 +84,9 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
 - `wmsZooms` turns the layer's `Min/MaxScaleDenominator` into the source's `minzoom`/`maxzoom`, so MapLibre skips
   empty requests and **enlarges the last real tiles** beyond the server's limit (e.g. Hrvatske vode flood maps).
   Remember: for 512 px tiles, MapLibre requests tile zoom ≈ map zoom.
-- Show the layer's legend (`legendUrl`) when it is on.
+- Show the layer's legend (`legendUrl`) when it is on, unless it's a single unlabelled swatch (≤ 20 × 20 px, e.g. DGU).
+- The source's `bounds` is the layer's lon/lat extent from GetCapabilities (`wmsBounds`), so no tiles are asked for
+  beyond it (DGU draws those black).
 - A click on a `featureInfo` layer (`wms.js`) sends GetFeatureInfo for a 9 px box around the click, JSON, one feature,
   with `PROPERTYNAME` listing the layer's attributes from WFS DescribeFeatureType: without it the answer carries the
   geometry, and one big Bioportal habitat polygon is 23.5 MB (5 s) instead of 0.4 KB (~0.3 s). The highlight is then
@@ -96,6 +98,16 @@ Imports: inside `src/lib` use relative imports (`./ogc.js`); from `src/routes` u
   such a layer of areas is on, the cursor is a pointer over the whole map; lines and points alone don't get one.
 - Overlays stack by the same kind (`addOverlay`'s `kind`): points over lines over areas and plain rasters, whatever
   order they're turned on in; rasters stay under the basemap labels, map-drawn features above them.
+
+**Services behind a key** (service-level `authKey`: the URL that hands out the key)
+- DGU geoportal (`geoportal.dgu.hr/services/auth/…`, "za registrirane korisnike"; the open `services/inspire/…` ones
+  carry a watermark): images need `authKey`, GetCapabilities doesn't. `keepKey` (`utils.js`) gets a key from
+  `https://geoportal.dgu.hr/api/authkey/userAuthKey` (`{ authKey, expires, overlay }`, ~8 min, renewed `overlay` = 20 s
+  early by passing the old key back; CORS allows any origin) and `setSiteParams` (`map.js`) makes MapLibre add it to
+  every request to that site (`transformRequest`), since tile URLs are built once. Capabilities are read without a key:
+  read with one, they bake it into the GetMap URLs.
+- Service-level `format` — WMS tile format instead of PNG: `image/jpeg` for photos covering their whole extent (DGU
+  JPEG tiles ~110 KB vs PNG ~700 KB, same speed), never for partial ones (JPEG is white where there's no image).
 
 **WMTS**
 - Only layers with an EPSG:3857 tile matrix set starting at zoom 0 can be shown (MapLibre is Web Mercator only).
@@ -135,8 +147,9 @@ Keep these to what cannot be inferred automatically. Supported keys:
 - `snapshot` — WFS only: URL (`import … from './snapshots/<layer>.json?url'`) of a saved GetFeature response, loaded
   whole instead of asking the server. For small layers whose server is very slow. See Snapshots.
 - `tileSize` — WMS tile size in px (default 512).
-- `exclusive` — key shared by layers of which only one may be on: turning one on turns the others off (the 11
-  Bioportal sensitivity maps, which cover all of Croatia, share `group: 'Osjetljivost'` and `exclusive`). They keep
+- `exclusive` — key shared by layers of which only one may be on, also across services (a service-level `exclusive`
+  applies to all its layers): turning one on turns the others off (the 11 Bioportal sensitivity maps, which cover all
+  of Croatia, share `group: 'Osjetljivost'` and `exclusive`; the Digitalni ortofoto surveys share one too). They keep
   checkboxes, so the active one can still be turned off.
 - `overview` — WMS: `{ url, bounds: [w, s, e, n], maxZoom }`, a saved image of the whole layer (`./snapshots/*.png?url`)
   shown until map zoom `maxZoom` + 0.5 instead of the server's tiles, for layers the server renders very slowly when
@@ -144,6 +157,11 @@ Keep these to what cannot be inferred automatically. Supported keys:
   the tile minzoom that first appears exactly there (zoom 8 with 256 px tiles → 10). It is set on the source, not its
   layer, so the source stays in use and the provider stays credited. Check by counting `sourcedata` tile events per
   zoom; the network panel doesn't show MapLibre's worker requests. See Snapshots.
+
+Service-level keys besides `title`, `url`, `type` and `layers`: `category` (ready layers' section on top), `section`
+(services listed together in one section of the full list, one row each, named by `title`: `flat` in `Source.svelte`),
+`authKey`, `format` (see WMS above) and `together` (other WMS services whose first layer is drawn with this one, as one
+row: halves of the country from different services).
 
 New tweak types must be generic (applied by `map.js`/`wfs.js`/`Source.svelte`/the page), not special-cased per
 source in code.
@@ -158,7 +176,11 @@ The sidebar lists only these on top, marked `ready`, under three categories name
 **Otpad** (AZO WFS), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
 **Hrvatske vode** (all 4 flood maps, the user's choice). Every other layer shows in its service's section only when
 "Prikaži sve slojeve" is ticked (a developer option at the bottom, next to "Dodaj ručno slojeve"); a service whose
-layers are all on top is left out there. Hiding the list takes its layers off the map (each `Source` removes its
+layers are all on top is left out there. **Digitalni ortofoto (podloga)** (DGU, 10 rows: 2011, 2014–2016, the two-year composites 2017/2018 to 2023/2024,
+2022/2023 (the LIDAR survey, named like the rest), 2024 west + 2025/2026 east as one row "2024./2025.", and the 1:1000 Zagreb / 1:500 Sisak
+earthquake ones) is a `section` at the very top of the sidebar, always shown, one survey at a time (service-level
+`exclusive`); whole-country surveys use JPEG. Single years that a composite holds are
+left out (each covers half the country, not cut cleanly). Hiding the list takes its layers off the map (each `Source` removes its
 layers when it goes away) but keeps them stored, so they come back with it. A thin grey rule and the user's note "Niže navedeni slojevi prikazivat će se
 na karti bez obrade." separate them from the ready layers (the one sentence allowed in the sidebar).
 
@@ -277,7 +299,7 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   logos, counters/badges, spinners, empty-state prose. The one loading indicator is the green bar below.
 - **CSS stays small and plain**: native form controls (no custom checkboxes), no rounded corners, no shadows,
   gradients, animations or transitions, no colour themes/variables. A few lines per component is the target.
-- Sidebar: `Avantage` title, the layer filter, the three categories of ready layers, then (with "Prikaži sve
+- Sidebar: `Avantage` title, the layer filter, the Digitalni ortofoto section, the three categories of ready layers, then (with "Prikaži sve
   slojeve") one `<details>` per service and the user's own services; at the bottom the two option checkboxes and the
   URL form. No GetCapabilities ("`<TYPE> endpoint`") links and no service type (WFS/WMS) in the sidebar: they put
   off ordinary users.
