@@ -191,9 +191,9 @@ The sidebar lists only these on top, marked `ready`, under four categories named
 record of each of the 98: tonnes, kg per person, a facility's yearly tonnage, recovery / recycling / separation rates;
 counties and municipalities only, by the user's pick; clickable, plain properties table, one list, one at a time), **Bioportal** (Karta staništa without "2016 - točke", and the 11 Osjetljivost maps) and
 **Hrvatske vode** (all 4 flood maps, the user's choice). No other layer is listed: the
-"Prikaži sve slojeve" developer option (every other layer, raw) was removed; to show one, design it and mark it `ready`. **Digitalni ortofoto (podloga)** (DGU, 10 rows: 2011, 2014–2016, the two-year composites 2017/2018 to 2023/2024,
-2022/2023 (the LIDAR survey, named like the rest), 2024 west + 2025/2026 east as one row "2024./2025.", and the 1:1000 Zagreb / 1:500 Sisak
-earthquake ones) is a `section` at the very top of the sidebar, always shown, one survey at a time (service-level
+"Prikaži sve slojeve" developer option (every other layer, raw) was removed; to show one, design it and mark it `ready`. **Digitalni ortofoto (podloga)** (DGU, 8 rows, newest first: 2024 west + 2025/2026 east as one row "2024./2025.",
+the two-year composites 2023/2024 to 2017/2018 with 2022/2023 (the LIDAR survey, named like the rest), 2014–2016 and 2011;
+the 1:1000 Zagreb / 1:500 Sisak earthquake surveys are left out, the user's call: they cover only those areas) is a `section` at the very top of the sidebar, always shown, one survey at a time (service-level
 `exclusive`); whole-country surveys use JPEG. Single years that a composite holds are
 left out (each covers half the country, not cut cleanly). A `Source` that goes away takes its layers off the map
 but keeps them stored, so they come back with it.
@@ -305,12 +305,17 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
 
 - UI text is **Croatian** and as short as possible; less text is better. Explanations for users will be added
   deliberately later, by the user — never add them on your own.
-- **Not allowed** in the UI: subtitles/taglines (e.g. "Otvoreni prostorni podaci Hrvatske"), section headings
+- **Not allowed** in the UI: taglines (e.g. "Otvoreni prostorni podaci Hrvatske"), section headings
   (e.g. "Dodaj servis"), hint paragraphs (e.g. "Podržani su WMS, WFS i WMTS…"), footers or credits in the sidebar,
-  logos, counters/badges, spinners, empty-state prose. The one loading indicator is the green bar below.
+  counters/badges, spinners, empty-state prose. The sidebar header (below) is the one place for the logo and a subtitle. The one loading indicator is the green bar below.
 - **CSS stays small and plain**: native form controls (no custom checkboxes), no rounded corners, no shadows,
   gradients, animations or transitions, no colour themes/variables. A few lines per component is the target.
-- Sidebar: `Avantage` title, the layer filter, the Digitalni ortofoto section, the four categories of ready layers; nothing
+- One accent colour, the logo's green `#2e7d32`, on a few places only: the page's `accent-color` (checkboxes, sliders),
+  the selected "Svi slojevi" / "Aktivni slojevi" tab, the category icons and markers, and a category or group with
+  layers on. Each category has a small icon (`icon` on its service in `sources.js`, 16×16 SVG content drawn with the
+  text colour) before its name.
+- Sidebar: the header (the logo `static/favicon.svg`, "IKOP" beside it and "Interaktivna karta okolišnih podataka" in grey
+  below), the layer filter, the Digitalni ortofoto section, the four categories of ready layers; nothing
   else. There are no user-added services (the "Dodaj ručno slojeve" form was removed). No GetCapabilities ("`<TYPE> endpoint`") links and no service type (WFS/WMS) in the sidebar: they put
   off ordinary users.
 - A layer with the `opacity` tweak gets a native range slider under its row while it's on (0–1, default 0.8 like
@@ -337,12 +342,18 @@ for l in kopnena_stanista_2016 morska_stanista_p_1_1 morska_stanista_pt_1_1 ocje
   the service: one `DescribeFeatureType` per WFS (a sample feature when the schema says only "geometry").
 - The map is limited to Croatia (`maxBounds`). `croatiaStyle` in `map.js` rewrites the basemap style before the first
   frame: no tiles beyond `maxBounds`, outside Croatia only grey land and the sea (`src/lib/croatia-mask.json`, from
-  the OSM boundary; water is drawn above the mask) and labels only inside Croatia.
+  the OSM boundary; water is drawn above the mask) and labels only inside Croatia, without country names ("Croatia" sat in the middle of every view).
 - Loading bar: a thin green (`#4caf50`) block sweeping along the top edge of the page while any download runs
   (`track` in `utils.js`: WFS, GetCapabilities, the basemap style) or WMS/WMTS tiles load (`onLoading` from `createMap`).
   Basemap tiles and re-tiling already loaded GeoJSON don't count.
+- Above the zoom buttons (bottom right) a button "Prikaži cijelu Hrvatsku" (`resetViewControl` in `map.js`) goes back
+  to the first view, `CROATIA_VIEW`, facing north and flat (rotation and tilt reset).
+- "Resetiraj" (turns every layer off) sits under the "Aktivni slojevi" list, beside "Dodaj sloj", while any layer is on.
 - Debug readout: `lat, lon, z zoom` (two decimals each) in the **top-right** corner of the map. Map controls must
-  not cover it.
+  not cover it. Hidden on phones.
+- Phones (≤ 700 px wide): the map fills the screen; the sidebar is hidden and opens over the map from "Slojevi"
+  (top left, beside the place search), closed with its ✕; the details panel takes the lower half of the screen and
+  the map controls move above it. Plain `@media` CSS in `+page.svelte`, no sliding or other animation.
 - Code, identifiers and comments are **English**. Comments explain *why*, briefly.
 - `localStorage` is only for per-user conveniences (enabled layers, their order) and every access is wrapped in
   `try/catch`.
